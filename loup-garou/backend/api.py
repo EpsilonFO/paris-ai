@@ -16,10 +16,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS pour permettre les appels depuis ChatGPT
+# CORS pour permettre les appels depuis le frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://chat.openai.com", "https://chatgpt.com"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

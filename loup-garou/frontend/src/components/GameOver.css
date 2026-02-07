@@ -1,0 +1,107 @@
+.game-over {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.game-over.village-win {
+  background: linear-gradient(135deg, #1a472a 0%, #2d6a4f 50%, #40916c 100%);
+}
+
+.game-over.wolf-win {
+  background: linear-gradient(135deg, #2c0a0a 0%, #5c1616 50%, #8b0000 100%);
+}
+
+.game-over-content {
+  text-align: center;
+  padding: 40px;
+  animation: scaleIn 0.5s ease 0.2s both;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.winner-icon {
+  font-size: 100px;
+  margin-bottom: 20px;
+  animation: bounce 1s ease infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+.game-over h1 {
+  font-size: 60px;
+  color: #FFD700;
+  margin: 0 0 20px;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+.game-over h2 {
+  font-size: 24px;
+  color: white;
+  margin: 0 0 40px;
+  font-weight: normal;
+}
+
+.restart-button {
+  padding: 15px 40px;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.restart-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+}
+
+@media (max-width: 500px) {
+  .winner-icon {
+    font-size: 60px;
+  }
+
+  .game-over h1 {
+    font-size: 40px;
+  }
+
+  .game-over h2 {
+    font-size: 18px;
+    padding: 0 20px;
+  }
+}

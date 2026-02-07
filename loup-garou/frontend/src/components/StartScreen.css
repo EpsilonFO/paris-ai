@@ -1,0 +1,173 @@
+.start-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  padding: 20px;
+}
+
+.start-content {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+}
+
+.game-title {
+  font-size: 48px;
+  color: #FFD700;
+  margin: 0;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  }
+  to {
+    text-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+  }
+}
+
+.game-subtitle {
+  color: #AAA;
+  font-size: 18px;
+  margin: 10px 0 40px;
+}
+
+.start-form {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 30px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  color: #CCC;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #FFD700;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+.form-group input::placeholder {
+  color: #888;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+.start-button {
+  width: 100%;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.start-button:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+}
+
+.start-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.roles-info {
+  margin-top: 20px;
+}
+
+.roles-info h3 {
+  color: #FFD700;
+  margin-bottom: 15px;
+}
+
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.role-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 15px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-icon {
+  font-size: 30px;
+}
+
+.role-name {
+  color: white;
+  font-size: 14px;
+}
+
+.role-card.wolf {
+  border: 2px solid rgba(139, 0, 0, 0.5);
+}
+
+.role-card.villager {
+  border: 2px solid rgba(34, 139, 34, 0.5);
+}
+
+.role-card.seer {
+  border: 2px solid rgba(153, 50, 204, 0.5);
+}
+
+.role-card.witch {
+  border: 2px solid rgba(75, 0, 130, 0.5);
+}
+
+@media (max-width: 500px) {
+  .game-title {
+    font-size: 36px;
+  }
+
+  .roles-grid {
+    grid-template-columns: 1fr;
+  }
+}
