@@ -1,0 +1,374 @@
+openapi: 3.1.0
+info:
+  title: Loup-Garou Game API
+  description: API pour gérer une partie de Loup-Garou entre un joueur humain et des IA
+  version: 1.0.0
+servers:
+  - url: https://your-server.com/api/v1
+    description: Production server
+
+paths:
+  /games:
+    post:
+      operationId: createGame
+      summary: Créer une nouvelle partie
+      description: Initialise une nouvelle partie de Loup-Garou avec les paramètres spécifiés
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - player_name
+              properties:
+                player_name:
+                  type: string
+                  description: Nom du joueur humain
+                  example: "Alexandre"
+                num_players:
+                  type: integer
+                  minimum: 4
+                  maximum: 10
+                  default: 6
+                  description: Nombre total de joueurs (humain + IA)
+                num_wolves:
+                  type: integer
+                  minimum: 1
+                  maximum: 3
+                  default: 2
+                  description: Nombre de loups-garous
+                include_seer:
+                  type: boolean
+                  default: true
+                  description: Inclure le rôle de Voyante
+                include_witch:
+                  type: boolean
+                  default: true
+                  description: Inclure le rôle de Sorcière
+      responses:
+        '201':
+          description: Partie créée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameCreatedResponse'
+
+  /games/{game_id}:
+    get:
+      operationId: getGameState
+      summary: Obtenir l'état actuel du jeu
+      description: Retourne l'état complet de la partie du point de vue du joueur humain
+      parameters:
+        - name: game_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identifiant unique de la partie
+      responses:
+        '200':
+          description: État du jeu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+        '404':
+          description: Partie non trouvée
+
+  /games/{game_id}/actions:
+    post:
+      operationId: processAction
+      summary: Soumettre une action du joueur
+      description: Traite l'action du joueur humain (vote, observation, etc.)
+      parameters:
+        - name: game_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayerAction'
+      responses:
+        '200':
+          description: Action traitée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResult'
+
+  /games/{game_id}/discussions:
+    get:
+      operationId: getDiscussions
+      summary: Obtenir les discussions des joueurs IA
+      description: Génère les interventions des joueurs IA pendant la phase de jour
+      parameters:
+        - name: game_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Discussions générées
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  discussions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Discussion'
+
+  /games/{game_id}/summary:
+    get:
+      operationId: getGameSummary
+      summary: Obtenir un résumé du jeu
+      description: Retourne un résumé de l'état actuel pour le joueur humain
+      parameters:
+        - name: game_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: player_name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Nom du joueur demandant le résumé
+      responses:
+        '200':
+          description: Résumé du jeu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSummary'
+
+components:
+  schemas:
+    GameCreatedResponse:
+      type: object
+      properties:
+        game_id:
+          type: string
+          description: Identifiant unique de la partie
+          example: "ABCD1234"
+        your_role:
+          type: string
+          description: Rôle assigné au joueur humain
+          example: "Voyante"
+        your_faction:
+          type: string
+          enum: [village, loups_garous]
+          description: Faction du joueur
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerInfo'
+          description: Liste des joueurs
+        fellow_wolves:
+          type: array
+          items:
+            type: string
+          description: Noms des autres loups (si le joueur est loup)
+        message:
+          type: string
+          description: Message d'introduction narratif
+
+    GameState:
+      type: object
+      properties:
+        game_id:
+          type: string
+        phase:
+          type: string
+          enum: [nuit, jour]
+        day_number:
+          type: integer
+        status:
+          type: string
+          enum: [en_cours, victoire_village, victoire_loups]
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerInfo'
+        alive_count:
+          type: integer
+        pending_action:
+          type: string
+          nullable: true
+          description: Action attendue du joueur humain
+
+    PlayerInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        is_alive:
+          type: boolean
+        is_human:
+          type: boolean
+        role:
+          type: string
+          nullable: true
+          description: Rôle (visible seulement si mort ou si c'est le joueur lui-même)
+        personality:
+          type: string
+          nullable: true
+          description: Description de la personnalité (pour les IA)
+
+    PlayerAction:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [wolf_vote, seer_check, witch_choice, day_vote, wait_night]
+          description: Type d'action
+        target:
+          type: string
+          description: Cible de l'action (nom du joueur)
+        save:
+          type: boolean
+          description: Pour la sorcière - utiliser la potion de vie
+        kill:
+          type: string
+          description: Pour la sorcière - cible de la potion de mort
+
+    ActionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        messages:
+          type: array
+          items:
+            type: string
+        seer_result:
+          $ref: '#/components/schemas/SeerResult'
+        night_events:
+          $ref: '#/components/schemas/NightEvents'
+        votes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Mapping votant -> cible
+        vote_counts:
+          type: object
+          additionalProperties:
+            type: integer
+        eliminated:
+          $ref: '#/components/schemas/EliminatedPlayer'
+        tie:
+          type: boolean
+        game_over:
+          $ref: '#/components/schemas/GameOver'
+        error:
+          type: string
+
+    SeerResult:
+      type: object
+      properties:
+        target:
+          type: string
+        role:
+          type: string
+        is_wolf:
+          type: boolean
+
+    NightEvents:
+      type: object
+      properties:
+        deaths:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              role:
+                type: string
+              cause:
+                type: string
+                enum: [loups, sorcière]
+        saved:
+          type: string
+          nullable: true
+
+    EliminatedPlayer:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        votes:
+          type: integer
+
+    GameOver:
+      type: object
+      properties:
+        winner:
+          type: string
+          enum: [Village, Loups-Garous]
+        status:
+          type: string
+
+    Discussion:
+      type: object
+      properties:
+        player:
+          type: string
+        message:
+          type: string
+        personality:
+          type: string
+          nullable: true
+
+    GameSummary:
+      type: object
+      properties:
+        game_id:
+          type: string
+        phase:
+          type: string
+        day_number:
+          type: integer
+        status:
+          type: string
+        your_role:
+          type: string
+        your_faction:
+          type: string
+        you_are_alive:
+          type: boolean
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerInfo'
+        alive_count:
+          type: integer
+        fellow_wolves:
+          type: array
+          items:
+            type: string
+          description: Présent si le joueur est loup
+        potions:
+          type: object
+          properties:
+            life:
+              type: boolean
+            death:
+              type: boolean
+          description: Présent si le joueur est sorcière
+        wolf_victim:
+          type: string
+          nullable: true
+          description: Victime des loups (pour la sorcière pendant la nuit)
