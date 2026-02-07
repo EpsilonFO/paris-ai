@@ -2,8 +2,12 @@
 API FastAPI pour le jeu du Loup-Garou
 Avec agents IA Anthropic Claude
 """
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -16,6 +20,9 @@ app = FastAPI(
     description="API pour jouer au Loup-Garou avec des agents IA Anthropic Claude",
     version="2.0.0"
 )
+
+# Chemin vers les fichiers statiques du frontend (build)
+FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
 
 # CORS pour permettre les appels depuis le frontend
 app.add_middleware(
@@ -239,6 +246,28 @@ def _generate_intro_message(role: Role) -> str:
         ),
     }
     return messages.get(role, "Bienvenue dans la partie !")
+
+
+# --- Servir le frontend ---
+
+# Monter les assets statiques (JS, CSS, images)
+if FRONTEND_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
+
+
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    """Sert le frontend React pour toutes les routes non-API"""
+    # Si c'est une route API, on ne devrait pas arriver ici
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+
+    # Servir index.html pour le SPA
+    index_file = FRONTEND_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+
+    return {"message": "Frontend not built. Run 'npm run build' in frontend/"}
 
 
 # Pour exécuter avec uvicorn

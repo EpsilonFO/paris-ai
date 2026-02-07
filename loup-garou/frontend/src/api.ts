@@ -1,6 +1,7 @@
 import type { GameState, CreateGameResponse, ActionResult, Discussion } from './types';
 
-const API_BASE = 'http://localhost:8000/api/v1';
+// En production, utiliser une URL relative pour que ça fonctionne sur Alpic
+const API_BASE = '/api/v1';
 
 export async function setAnthropicKey(apiKey: string): Promise<{ success: boolean }> {
   const response = await fetch(`${API_BASE}/config/anthropic`, {
