@@ -5,6 +5,8 @@ import asyncio
 import random
 from typing import Optional
 from collections import Counter
+import json
+import re
 
 from .models import (
     GameState, Player, Role, Phase, GameStatus,
@@ -464,14 +466,36 @@ class GameEngine:
                 agent = agents.get(player.name)
                 if agent:
                     message = await agent.generate_discussion(existing_discussions)
-                    personality = self.personalities[game_id].get(player.name)
+                    data = json.loads(format_json(message))
+                    # 3. Extraction des valeurs dans des variables
+                    nom_agent_2 = data["name"]
+                    message_texte = data["content"]
                     discussion = {
                         "player": player.name,
-                        "message": message,
-                        "personality": personality.description if personality else None
+                        "message": message_texte,
                     }
                     discussions.append(discussion)
                     existing_discussions.append(discussion)
+                    print(player.name, " : ", message_texte)
+                    if(nom_agent_2) :
+                        print("je veux viser ",nom_agent_2)
+                        print("="*100)
+                        print(message)
+                        print("="*100)
+                    if(nom_agent_2 in game.get_alive_players()) : 
+                        agent_2 = agents.get(nom_agent_2)
+                        message_2 = await agent_2.generate_discussion(existing_discussions)
+                        data = json.loads(format_json(message_2))
+                        # 3. Extraction des valeurs dans des variables
+                        nom_agent_2 = data["name"].lower()
+                        message_texte = data["content"]
+                        discussion = {
+                            "player": nom_agent_2,
+                            "message": message_texte,
+                        }
+                        discussions.append(discussion)
+                        existing_discussions.append(discussion)
+                        print("Réponse de ", nom_agent_2, "à ", player.name, " : ", message_texte)
 
         # Mettre en cache
         self.discussions_cache[game_id] = existing_discussions
@@ -524,3 +548,13 @@ class GameEngine:
 
 # Instance globale du moteur
 engine = GameEngine()
+def format_json(chaine_sale):
+    try:
+        propre = re.sub(r'```(?:json)?|```', '', chaine_sale).strip()
+        if propre.startswith("json"):
+            propre = propre[4:].strip()
+        donnees = json.loads(propre)
+        return json.dumps(donnees, indent=4, ensure_ascii=False)
+
+    except Exception as e:
+        return f"Erreur de formatage : {e}"

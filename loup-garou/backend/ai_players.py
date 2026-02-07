@@ -7,6 +7,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional
 import anthropic
+import re
 
 from .models import Player, Role, GameState, Phase
 
@@ -202,7 +203,6 @@ Observe les comportements suspects."""
 
         system_prompt = self._build_system_prompt()
         game_context = self._build_game_context()
-
         user_prompt = f"""{game_context}
 
 C'est la phase de discussion du jour. Tu dois participer à la discussion pour:
@@ -210,8 +210,16 @@ C'est la phase de discussion du jour. Tu dois participer à la discussion pour:
 2. Te défendre si nécessaire
 3. Orienter le vote
 
-Génère UNE réplique courte (1-2 phrases) en restant dans ton personnage.
-Ne mets pas de guillemets autour de ta réponse."""
+Génère UNE réplique courte (2-3 phrases) en restant dans ton personnage.
+Si il n'y a eu aucune discussion préalable pas besoind'en inventer tu peux commencer la conversation 
+Si ta réponse s'adresse à une personne en particulier que tu as envie de confronter tu mettre son nom dans la case name du json de sortie.
+Autrement laisse la case "name" vide.
+Ta réponse doit être dans le format Json suivant : 
+  "content":,
+  "name":
+
+
+"""
 
         try:
             client = get_anthropic_client()
@@ -228,6 +236,7 @@ Ne mets pas de guillemets autour de ta réponse."""
             # Fallback en cas d'erreur
             return self._fallback_discussion()
 
+    
     def _fallback_discussion(self) -> str:
         """Message de fallback si l'API échoue"""
         fallbacks = [
@@ -253,7 +262,7 @@ Discussions du jour:
 C'est le moment de voter. Tu dois choisir UN joueur à éliminer parmi: {', '.join(candidates)}
 
 IMPORTANT:
-- Si tu es Loup-Garou, vote contre un villageois (évite de voter contre tes alliés loups)
+- Si tu es Loup-Garou, vote pour ton propre interet
 - Si tu es Villageois/Voyante/Sorcière, vote contre celui que tu suspectes le plus
 
 Réponds UNIQUEMENT avec un JSON de cette forme:
@@ -273,7 +282,7 @@ Réponds UNIQUEMENT avec un JSON de cette forme:
             content = response.content[0].text.strip()
             # Parser le JSON
             try:
-                result = json.loads(content)
+                result = json.loads(format_json(content))
                 # Vérifier que le vote est valide
                 if result.get("vote") in candidates:
                     return result
@@ -284,6 +293,8 @@ Réponds UNIQUEMENT avec un JSON de cette forme:
             for candidate in candidates:
                 if candidate.lower() in content.lower():
                     return {"vote": candidate, "reasoning": "Vote basé sur les discussions"}
+                else : 
+                    print("Mauvais format Json !!!!")
 
             # Fallback
             return {"vote": random.choice(candidates), "reasoning": "Vote aléatoire"}
@@ -327,10 +338,11 @@ Réponds UNIQUEMENT avec un JSON:
 
             content = response.content[0].text.strip()
             try:
-                result = json.loads(content)
+                result = json.loads(format_json(content))
                 if result.get("target") in targets:
                     return result
             except json.JSONDecodeError:
+                print("Erreur 336")
                 pass
 
             for target in targets:
@@ -377,7 +389,7 @@ Réponds UNIQUEMENT avec un JSON:
 
             content = response.content[0].text.strip()
             try:
-                result = json.loads(content)
+                result = json.loads(format_json(content))
                 if result.get("target") in targets:
                     return result
             except json.JSONDecodeError:
@@ -428,7 +440,7 @@ Réponds UNIQUEMENT avec un JSON:
 
             content = response.content[0].text.strip()
             try:
-                result = json.loads(content)
+                result = json.loads(format_json(content))
                 return {
                     "save": bool(result.get("save", False)) and has_life and wolf_victim,
                     "kill": result.get("kill") if result.get("kill") in targets and has_death else None,
@@ -459,7 +471,16 @@ Réponds UNIQUEMENT avec un JSON:
 
 # Alias pour compatibilité
 AIBrain = AIAgent
+def format_json(chaine_sale):
+    try:
+        propre = re.sub(r'```(?:json)?|```', '', chaine_sale).strip()
+        if propre.startswith("json"):
+            propre = propre[4:].strip()
+        donnees = json.loads(propre)
+        return json.dumps(donnees, indent=4, ensure_ascii=False)
 
+    except Exception as e:
+        return f"Erreur de formatage : {e}"
 
 def assign_personalities(players: list[Player]) -> dict[str, AIPersonality]:
     """Assigne des personnalités aux joueurs IA"""
@@ -476,3 +497,4 @@ def assign_personalities(players: list[Player]) -> dict[str, AIPersonality]:
                 assignments[player.name] = personality
 
     return assignments
+
