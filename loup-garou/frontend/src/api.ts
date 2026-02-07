@@ -2,6 +2,16 @@ import type { GameState, CreateGameResponse, ActionResult, Discussion } from './
 
 const API_BASE = 'http://localhost:8000/api/v1';
 
+export async function setAnthropicKey(apiKey: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/config/anthropic`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+  if (!response.ok) throw new Error('Failed to set API key');
+  return response.json();
+}
+
 export async function createGame(
   playerName: string,
   numPlayers = 6,

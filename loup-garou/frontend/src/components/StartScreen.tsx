@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { setAnthropicKey } from '../api';
 import './StartScreen.css';
 
 interface StartScreenProps {
@@ -10,10 +11,24 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
   const [playerName, setPlayerName] = useState('');
   const [numPlayers, setNumPlayers] = useState(6);
   const [numWolves, setNumWolves] = useState(2);
+  const [apiKey, setApiKey] = useState('');
+  const [apiKeySet, setApiKeySet] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState('');
+
+  const handleSetApiKey = async () => {
+    if (!apiKey.trim()) return;
+    try {
+      await setAnthropicKey(apiKey.trim());
+      setApiKeySet(true);
+      setApiKeyError('');
+    } catch {
+      setApiKeyError('Erreur lors de la configuration de la cle API');
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (playerName.trim()) {
+    if (playerName.trim() && apiKeySet) {
       onStartGame(playerName.trim(), numPlayers, numWolves);
     }
   };
@@ -22,9 +37,37 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
     <div className="start-screen">
       <div className="start-content">
         <h1 className="game-title">Loup-Garou</h1>
-        <p className="game-subtitle">Le jeu de roles mystere</p>
+        <p className="game-subtitle">Le jeu de roles mystere avec IA</p>
 
         <form onSubmit={handleSubmit} className="start-form">
+          {/* Configuration API Anthropic */}
+          <div className="form-group api-key-group">
+            <label htmlFor="apiKey">Cle API Anthropic</label>
+            <div className="api-key-input">
+              <input
+                id="apiKey"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-ant-..."
+                disabled={isLoading || apiKeySet}
+              />
+              {!apiKeySet ? (
+                <button
+                  type="button"
+                  className="api-key-button"
+                  onClick={handleSetApiKey}
+                  disabled={!apiKey.trim() || isLoading}
+                >
+                  Configurer
+                </button>
+              ) : (
+                <span className="api-key-success">Configuree</span>
+              )}
+            </div>
+            {apiKeyError && <span className="api-key-error">{apiKeyError}</span>}
+          </div>
+
           <div className="form-group">
             <label htmlFor="playerName">Votre nom</label>
             <input
@@ -33,8 +76,7 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Entrez votre nom..."
-              disabled={isLoading}
-              autoFocus
+              disabled={isLoading || !apiKeySet}
             />
           </div>
 
@@ -45,7 +87,7 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
                 id="numPlayers"
                 value={numPlayers}
                 onChange={(e) => setNumPlayers(Number(e.target.value))}
-                disabled={isLoading}
+                disabled={isLoading || !apiKeySet}
               >
                 {[4, 5, 6, 7, 8, 9, 10].map((n) => (
                   <option key={n} value={n}>{n} joueurs</option>
@@ -59,7 +101,7 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
                 id="numWolves"
                 value={numWolves}
                 onChange={(e) => setNumWolves(Number(e.target.value))}
-                disabled={isLoading}
+                disabled={isLoading || !apiKeySet}
               >
                 {[1, 2, 3].map((n) => (
                   <option key={n} value={n}>{n} loup{n > 1 ? 's' : ''}</option>
@@ -71,7 +113,7 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
           <button
             type="submit"
             className="start-button"
-            disabled={!playerName.trim() || isLoading}
+            disabled={!playerName.trim() || !apiKeySet || isLoading}
           >
             {isLoading ? 'Creation...' : 'Commencer la partie'}
           </button>

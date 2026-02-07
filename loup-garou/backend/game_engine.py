@@ -1,13 +1,16 @@
 """
-Moteur de jeu du Loup-Garou
+Moteur de jeu du Loup-Garou avec agents IA OpenAI
 """
+import asyncio
 import random
 from typing import Optional
+from collections import Counter
+
 from .models import (
     GameState, Player, Role, Phase, GameStatus,
     WitchPotions, NightActions, VoteResult
 )
-from .ai_players import AIBrain, AIPersonality, assign_personalities, AI_PERSONALITIES
+from .ai_players import AIAgent, AIPersonality, assign_personalities, AI_PERSONALITIES
 
 
 class GameEngine:
@@ -15,8 +18,9 @@ class GameEngine:
 
     def __init__(self):
         self.games: dict[str, GameState] = {}
-        self.ai_brains: dict[str, dict[str, AIBrain]] = {}  # game_id -> {player_name -> brain}
+        self.ai_agents: dict[str, dict[str, AIAgent]] = {}  # game_id -> {player_name -> agent}
         self.personalities: dict[str, dict[str, AIPersonality]] = {}
+        self.discussions_cache: dict[str, list[dict]] = {}  # game_id -> discussions
 
     def create_game(
         self,
@@ -77,9 +81,10 @@ class GameEngine:
         )
 
         self.games[game_id] = game
+        self.discussions_cache[game_id] = []
 
-        # Créer les cerveaux IA
-        self._init_ai_brains(game)
+        # Créer les agents IA
+        self._init_ai_agents(game)
 
         # Log de création
         game.history.append({
@@ -91,14 +96,14 @@ class GameEngine:
 
         return game
 
-    def _init_ai_brains(self, game: GameState):
-        """Initialise les cerveaux IA pour tous les joueurs non-humains"""
-        self.ai_brains[game.game_id] = {}
+    def _init_ai_agents(self, game: GameState):
+        """Initialise les agents IA pour tous les joueurs non-humains"""
+        self.ai_agents[game.game_id] = {}
         for player in game.players:
             if not player.is_human:
                 personality = self.personalities[game.game_id].get(player.name)
                 if personality:
-                    self.ai_brains[game.game_id][player.name] = AIBrain(
+                    self.ai_agents[game.game_id][player.name] = AIAgent(
                         player, personality, game
                     )
 
@@ -124,8 +129,8 @@ class GameEngine:
         """Récupère une partie par son ID"""
         return self.games.get(game_id)
 
-    def process_human_action(self, game_id: str, action: dict) -> dict:
-        """Traite une action du joueur humain"""
+    async def process_human_action_async(self, game_id: str, action: dict) -> dict:
+        """Traite une action du joueur humain (version async)"""
         game = self.get_game(game_id)
         if not game:
             return {"error": "Partie non trouvée"}
@@ -137,17 +142,21 @@ class GameEngine:
         if not human or not human.is_alive:
             return {"error": "Vous êtes mort"}
 
-        action_type = action.get("action")
-
         if game.phase == Phase.NUIT:
-            return self._process_night_action(game, human, action)
+            return await self._process_night_action_async(game, human, action)
         else:
-            return self._process_day_action(game, human, action)
+            return await self._process_day_action_async(game, human, action)
 
-    def _process_night_action(self, game: GameState, human: Player, action: dict) -> dict:
+    def process_human_action(self, game_id: str, action: dict) -> dict:
+        """Traite une action du joueur humain (wrapper sync)"""
+        return asyncio.get_event_loop().run_until_complete(
+            self.process_human_action_async(game_id, action)
+        )
+
+    async def _process_night_action_async(self, game: GameState, human: Player, action: dict) -> dict:
         """Traite une action nocturne"""
         action_type = action.get("action")
-        result = {"success": True, "messages": []}
+        result = {"success": True, "messages": [], "wolf_discussions": []}
 
         if human.role == Role.LOUP_GAROU and action_type == "wolf_vote":
             target_name = action.get("target")
@@ -157,6 +166,10 @@ class GameEngine:
                 return {"error": "Cible invalide"}
             if target.role == Role.LOUP_GAROU:
                 return {"error": "Vous ne pouvez pas attaquer un autre loup"}
+
+            # Générer les discussions des autres loups IA
+            wolf_discussions = await self._generate_wolf_discussions(game, target_name)
+            result["wolf_discussions"] = wolf_discussions
 
             game.night_actions.wolf_victim = target_name
             result["messages"].append(f"Les loups ont choisi {target_name} comme victime.")
@@ -195,9 +208,14 @@ class GameEngine:
             result["messages"].append("Vous attendez que la nuit passe...")
 
         # Exécuter les actions IA et résoudre la nuit
-        self._execute_ai_night_actions(game)
+        await self._execute_ai_night_actions_async(game)
         night_result = self._resolve_night(game)
         result["night_events"] = night_result
+
+        # Mettre à jour la mémoire des agents avec les morts
+        for death in night_result.get("deaths", []):
+            for agent in self.ai_agents.get(game.game_id, {}).values():
+                agent.update_memory("death", death)
 
         # Vérifier la victoire
         victory = game.check_victory()
@@ -211,55 +229,89 @@ class GameEngine:
             # Passer au jour
             game.phase = Phase.JOUR
             game.pending_action = "day_vote" if human.is_alive else None
+            # Réinitialiser le cache des discussions
+            self.discussions_cache[game.game_id] = []
 
         return result
 
-    def _execute_ai_night_actions(self, game: GameState):
+    async def _generate_wolf_discussions(self, game: GameState, human_target: str) -> list[dict]:
+        """Génère les réponses des autres loups IA au choix de l'humain"""
+        discussions = []
+        agents = self.ai_agents.get(game.game_id, {})
+
+        for player in game.get_wolves():
+            if not player.is_human and player.is_alive:
+                agent = agents.get(player.name)
+                if agent:
+                    fellow_wolves = [p.name for p in game.get_wolves() if p.name != player.name]
+                    # Générer une réaction au choix
+                    try:
+                        vote_result = await agent.generate_wolf_vote(fellow_wolves)
+                        message = f"Je suis d'accord pour {human_target}." if vote_result.get("target") == human_target else f"Je préférerais {vote_result.get('target')}, mais je te suis."
+                        discussions.append({
+                            "player": player.name,
+                            "message": message,
+                            "vote": vote_result.get("target")
+                        })
+                    except Exception:
+                        discussions.append({
+                            "player": player.name,
+                            "message": "D'accord, allons-y.",
+                            "vote": human_target
+                        })
+
+        return discussions
+
+    async def _execute_ai_night_actions_async(self, game: GameState):
         """Exécute les actions nocturnes des IA"""
-        brains = self.ai_brains.get(game.game_id, {})
+        agents = self.ai_agents.get(game.game_id, {})
 
         # Actions des loups IA (si pas déjà votée par humain loup)
         if not game.night_actions.wolf_victim:
             wolf_votes = []
             for player in game.get_wolves():
-                if not player.is_human:
-                    brain = brains.get(player.name)
-                    if brain:
-                        action = brain.generate_night_action()
-                        if action and action.get("target"):
-                            wolf_votes.append(action["target"])
+                if not player.is_human and player.is_alive:
+                    agent = agents.get(player.name)
+                    if agent:
+                        fellow_wolves = [p.name for p in game.get_wolves() if p.name != player.name]
+                        vote_result = await agent.generate_wolf_vote(fellow_wolves)
+                        if vote_result.get("target"):
+                            wolf_votes.append(vote_result["target"])
 
             if wolf_votes:
-                # Vote majoritaire des loups
-                from collections import Counter
                 vote_count = Counter(wolf_votes)
                 game.night_actions.wolf_victim = vote_count.most_common(1)[0][0]
 
         # Action de la voyante IA
         seer = next((p for p in game.players if p.role == Role.VOYANTE and p.is_alive and not p.is_human), None)
         if seer and not game.night_actions.seer_target:
-            brain = brains.get(seer.name)
-            if brain:
-                action = brain.generate_night_action()
-                if action:
-                    target = game.get_player(action["target"])
-                    if target:
-                        game.night_actions.seer_target = target.name
-                        game.night_actions.seer_result = target.role.display_name
+            agent = agents.get(seer.name)
+            if agent:
+                choice = await agent.generate_seer_choice()
+                target_name = choice.get("target")
+                target = game.get_player(target_name)
+                if target:
+                    game.night_actions.seer_target = target.name
+                    game.night_actions.seer_result = target.role.display_name
+                    # L'agent mémorise le rôle découvert
+                    agent.update_memory("role_revealed", {"player": target.name, "role": target.role.display_name})
 
         # Action de la sorcière IA
         witch = next((p for p in game.players if p.role == Role.SORCIERE and p.is_alive and not p.is_human), None)
         if witch:
-            brain = brains.get(witch.name)
-            if brain:
-                action = brain.generate_night_action()
-                if action:
-                    if action.get("save") and game.witch_potions.has_life_potion:
-                        game.night_actions.witch_save = True
-                        game.witch_potions.has_life_potion = False
-                    if action.get("kill") and game.witch_potions.has_death_potion:
-                        game.night_actions.witch_kill = action["kill"]
-                        game.witch_potions.has_death_potion = False
+            agent = agents.get(witch.name)
+            if agent:
+                choice = await agent.generate_witch_choice(
+                    game.night_actions.wolf_victim,
+                    game.witch_potions.has_life_potion,
+                    game.witch_potions.has_death_potion
+                )
+                if choice.get("save") and game.witch_potions.has_life_potion:
+                    game.night_actions.witch_save = True
+                    game.witch_potions.has_life_potion = False
+                if choice.get("kill") and game.witch_potions.has_death_potion:
+                    game.night_actions.witch_kill = choice["kill"]
+                    game.witch_potions.has_death_potion = False
 
     def _resolve_night(self, game: GameState) -> dict:
         """Résout les événements de la nuit"""
@@ -304,7 +356,7 @@ class GameEngine:
 
         return events
 
-    def _process_day_action(self, game: GameState, human: Player, action: dict) -> dict:
+    async def _process_day_action_async(self, game: GameState, human: Player, action: dict) -> dict:
         """Traite une action de jour"""
         action_type = action.get("action")
         result = {"success": True, "messages": []}
@@ -315,18 +367,22 @@ class GameEngine:
             # Collecter les votes
             votes = {human.name: target_name}
 
+            # Récupérer les discussions pour contexte
+            discussions = self.discussions_cache.get(game.game_id, [])
+
             # Générer les votes IA
-            brains = self.ai_brains.get(game.game_id, {})
+            agents = self.ai_agents.get(game.game_id, {})
             for player in game.get_alive_players():
                 if not player.is_human:
-                    brain = brains.get(player.name)
-                    if brain:
-                        vote = brain.generate_vote()
-                        if vote.get("vote"):
-                            votes[player.name] = vote["vote"]
+                    agent = agents.get(player.name)
+                    if agent:
+                        vote_result = await agent.generate_vote(discussions)
+                        if vote_result.get("vote"):
+                            votes[player.name] = vote_result["vote"]
+                            # Mettre à jour la mémoire
+                            agent.update_memory("vote", {"voter": player.name, "target": vote_result["vote"]})
 
             # Compter les votes
-            from collections import Counter
             vote_counts = Counter(votes.values())
             result["votes"] = dict(votes)
             result["vote_counts"] = dict(vote_counts)
@@ -350,6 +406,13 @@ class GameEngine:
                             f"{eliminated_name} a été éliminé avec {max_votes} votes. "
                             f"C'était un(e) {eliminated.role.display_name}."
                         )
+                        # Mettre à jour la mémoire des agents
+                        for agent in agents.values():
+                            agent.update_memory("death", {
+                                "name": eliminated_name,
+                                "role": eliminated.role.display_name,
+                                "cause": "vote"
+                            })
                 else:
                     result["tie"] = True
                     result["messages"].append(
@@ -386,28 +449,44 @@ class GameEngine:
 
         return result
 
-    def generate_ai_discussion(self, game_id: str) -> list[dict]:
+    async def generate_ai_discussion_async(self, game_id: str) -> list[dict]:
         """Génère les discussions des joueurs IA pendant le jour"""
         game = self.get_game(game_id)
         if not game or game.phase != Phase.JOUR:
             return []
 
         discussions = []
-        brains = self.ai_brains.get(game_id, {})
+        agents = self.ai_agents.get(game_id, {})
+        existing_discussions = self.discussions_cache.get(game_id, [])
 
         for player in game.get_alive_players():
             if not player.is_human:
-                brain = brains.get(player.name)
-                if brain:
-                    message = brain.generate_discussion([])
+                agent = agents.get(player.name)
+                if agent:
+                    message = await agent.generate_discussion(existing_discussions)
                     personality = self.personalities[game_id].get(player.name)
-                    discussions.append({
+                    discussion = {
                         "player": player.name,
                         "message": message,
                         "personality": personality.description if personality else None
-                    })
+                    }
+                    discussions.append(discussion)
+                    existing_discussions.append(discussion)
+
+        # Mettre en cache
+        self.discussions_cache[game_id] = existing_discussions
 
         return discussions
+
+    def generate_ai_discussion(self, game_id: str) -> list[dict]:
+        """Génère les discussions (wrapper sync)"""
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        return loop.run_until_complete(self.generate_ai_discussion_async(game_id))
 
     def get_game_summary(self, game_id: str, player_name: str) -> dict:
         """Génère un résumé de l'état du jeu pour un joueur"""

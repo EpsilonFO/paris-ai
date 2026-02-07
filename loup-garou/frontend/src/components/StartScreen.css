@@ -80,6 +80,62 @@
   color: #888;
 }
 
+/* API Key styles */
+.api-key-group {
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.api-key-input {
+  display: flex;
+  gap: 10px;
+}
+
+.api-key-input input {
+  flex: 1;
+}
+
+.api-key-button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.api-key-button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.api-key-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.api-key-success {
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  background: rgba(0, 176, 155, 0.3);
+  border-radius: 10px;
+  color: #96c93d;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.api-key-error {
+  display: block;
+  margin-top: 8px;
+  color: #ff6b6b;
+  font-size: 13px;
+}
+
 .form-row {
   display: flex;
   gap: 15px;

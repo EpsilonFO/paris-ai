@@ -1,6 +1,6 @@
 """
 API FastAPI pour le jeu du Loup-Garou
-Compatible avec les ChatGPT Custom Actions
+Avec agents IA Anthropic Claude
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,11 +9,12 @@ from typing import Optional
 
 from .game_engine import engine
 from .models import Role
+from .ai_players import set_anthropic_api_key
 
 app = FastAPI(
     title="Loup-Garou Game API",
-    description="API pour jouer au Loup-Garou avec des IA",
-    version="1.0.0"
+    description="API pour jouer au Loup-Garou avec des agents IA Anthropic Claude",
+    version="2.0.0"
 )
 
 # CORS pour permettre les appels depuis le frontend
@@ -27,6 +28,10 @@ app.add_middleware(
 
 
 # --- Modèles Pydantic ---
+
+class SetApiKeyRequest(BaseModel):
+    api_key: str = Field(..., description="Clé API Anthropic")
+
 
 class CreateGameRequest(BaseModel):
     player_name: str = Field(..., description="Nom du joueur humain")
@@ -47,7 +52,17 @@ class PlayerActionRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Bienvenue dans l'API Loup-Garou", "version": "1.0.0"}
+    return {"message": "Bienvenue dans l'API Loup-Garou", "version": "2.0.0"}
+
+
+@app.post("/api/v1/config/anthropic")
+async def set_api_key(request: SetApiKeyRequest):
+    """Configure la clé API Anthropic"""
+    try:
+        set_anthropic_api_key(request.api_key)
+        return {"success": True, "message": "Clé API Anthropic configurée"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/v1/games")
@@ -113,7 +128,8 @@ async def process_action(game_id: str, request: PlayerActionRequest):
         "kill": request.kill
     }
 
-    result = engine.process_human_action(game_id, action)
+    # Utiliser la version async
+    result = await engine.process_human_action_async(game_id, action)
 
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -128,7 +144,8 @@ async def get_discussions(game_id: str):
     if not game:
         raise HTTPException(status_code=404, detail="Partie non trouvée")
 
-    discussions = engine.generate_ai_discussion(game_id)
+    # Utiliser la version async
+    discussions = await engine.generate_ai_discussion_async(game_id)
     return {"discussions": discussions}
 
 
