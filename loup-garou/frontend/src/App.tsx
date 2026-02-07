@@ -24,11 +24,6 @@ function App() {
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [gameOver, setGameOver] = useState<{ winner: string } | null>(null);
-  const [witchInfo, setWitchInfo] = useState<{
-    victim?: string;
-    hasLife: boolean;
-    hasDeath: boolean;
-  }>({ hasLife: true, hasDeath: true });
 
   const addEvent = useCallback((type: GameEvent['type'], message: string) => {
     setEvents((prev) => [...prev, { id: Date.now(), type, message }]);
@@ -70,6 +65,7 @@ function App() {
       } else if (selectedTarget) {
         result = await sendAction(gameId, gameState.pending_action!, selectedTarget);
       } else {
+        setIsLoading(false);
         return;
       }
 
@@ -98,7 +94,6 @@ function App() {
     try {
       const result = await sendAction(gameId, 'witch_choice', undefined, true);
       processActionResult(result);
-      setWitchInfo((prev) => ({ ...prev, hasLife: false }));
 
       const newState = await getGameState(gameId);
       setGameState(newState);
@@ -119,7 +114,6 @@ function App() {
     try {
       const result = await sendAction(gameId, 'witch_choice', undefined, false, selectedTarget);
       processActionResult(result);
-      setWitchInfo((prev) => ({ ...prev, hasDeath: false }));
       setSelectedTarget(null);
 
       const newState = await getGameState(gameId);
@@ -209,7 +203,6 @@ function App() {
     setSelectedTarget(null);
     setEvents([]);
     setGameOver(null);
-    setWitchInfo({ hasLife: true, hasDeath: true });
   };
 
   useEffect(() => {
@@ -226,9 +219,14 @@ function App() {
     return <StartScreen onStartGame={handleStartGame} isLoading={isLoading} />;
   }
 
+  // Extraire les infos de la sorcière du gameState
+  const hasLifePotion = gameState.potions?.life ?? false;
+  const hasDeathPotion = gameState.potions?.death ?? false;
+  const wolfVictim = gameState.wolf_victim;
+
   const showActionPanel = gameState.pending_action && gameState.status === 'en_cours';
   const isSelectableMode = ['wolf_vote', 'seer_check', 'day_vote'].includes(gameState.pending_action || '');
-  const isWitchSelectMode = gameState.pending_action === 'witch_choice' && witchInfo.hasDeath;
+  const isWitchSelectMode = gameState.pending_action === 'witch_choice' && hasDeathPotion;
 
   return (
     <div className="app">
@@ -251,9 +249,9 @@ function App() {
           selectedTarget={selectedTarget}
           onAction={handleAction}
           onSkip={handleWitchSkip}
-          wolfVictim={witchInfo.victim}
-          hasLifePotion={witchInfo.hasLife}
-          hasDeathPotion={witchInfo.hasDeath}
+          wolfVictim={wolfVictim}
+          hasLifePotion={hasLifePotion}
+          hasDeathPotion={hasDeathPotion}
           onWitchSave={handleWitchSave}
           onWitchKill={handleWitchKill}
           isLoading={isLoading}

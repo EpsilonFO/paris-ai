@@ -103,15 +103,66 @@ async def create_game(request: CreateGameRequest):
 
 @app.get("/api/v1/games/{game_id}")
 async def get_game_state(game_id: str):
-    """Récupère l'état actuel de la partie"""
+    """Récupère l'état actuel de la partie (aligné avec le MCP)"""
     game = engine.get_game(game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Partie non trouvée")
 
     human_player = next((p for p in game.players if p.is_human), None)
-    player_name = human_player.name if human_player else None
 
-    return game.to_dict(player_perspective=player_name)
+    # Si c'est la sorcière humaine pendant la nuit, pré-exécuter voyante et loups IA
+    # pour qu'elle puisse voir la victime des loups
+    if (human_player and human_player.role == Role.SORCIERE
+            and game.phase.value == "nuit" and human_player.is_alive):
+        await engine.prepare_night_for_witch(game_id)
+
+    # Construire la réponse comme le MCP
+    state = {
+        "game_id": game.game_id,
+        "phase": game.phase.value,
+        "day_number": game.day_number,
+        "status": game.status.value,
+        "your_role": human_player.role.display_name if human_player else None,
+        "you_are_alive": human_player.is_alive if human_player else False,
+        "alive_players": [
+            {"name": p.name, "is_you": p.is_human, "is_alive": p.is_alive}
+            for p in game.get_alive_players()
+        ],
+        "dead_players": [
+            {"name": p.name, "role": p.role.display_name}
+            for p in game.players if not p.is_alive
+        ],
+        "players": [
+            {
+                "name": p.name,
+                "is_alive": p.is_alive,
+                "is_human": p.is_human,
+                "role": p.role.display_name if not p.is_alive or (human_player and p.name == human_player.name) else None,
+                "personality": p.personality
+            }
+            for p in game.players
+        ],
+        "alive_count": len(game.get_alive_players()),
+        "pending_action": game.pending_action
+    }
+
+    # Infos spécifiques pour la sorcière
+    if human_player and human_player.role == Role.SORCIERE:
+        state["potions"] = {
+            "life": game.witch_potions.has_life_potion,
+            "death": game.witch_potions.has_death_potion
+        }
+        # Révéler la victime des loups pendant la nuit
+        if game.phase.value == "nuit" and game.night_actions.wolf_victim:
+            state["wolf_victim"] = game.night_actions.wolf_victim
+
+    # Si le joueur est loup, révéler les alliés
+    if human_player and human_player.role == Role.LOUP_GAROU:
+        state["fellow_wolves"] = [
+            p.name for p in game.get_wolves() if p.name != human_player.name
+        ]
+
+    return state
 
 
 @app.post("/api/v1/games/{game_id}/actions")
@@ -139,12 +190,14 @@ async def process_action(game_id: str, request: PlayerActionRequest):
 
 @app.get("/api/v1/games/{game_id}/discussions")
 async def get_discussions(game_id: str):
-    """Génère les discussions des joueurs IA"""
+    """Récupère les discussions IA pour la phase de jour (comme le MCP)"""
     game = engine.get_game(game_id)
     if not game:
         raise HTTPException(status_code=404, detail="Partie non trouvée")
 
-    # Utiliser la version async
+    if game.phase.value != "jour":
+        return {"discussions": [], "message": "Les discussions ont lieu pendant le jour"}
+
     discussions = await engine.generate_ai_discussion_async(game_id)
     return {"discussions": discussions}
 

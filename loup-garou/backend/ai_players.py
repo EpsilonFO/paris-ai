@@ -4,6 +4,7 @@ Agents IA pour le jeu du Loup-Garou avec Anthropic Claude
 import os
 import json
 import random
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 import anthropic
@@ -30,6 +31,14 @@ def set_anthropic_api_key(api_key: str):
     """Configure la clé API Anthropic"""
     global _anthropic_client
     _anthropic_client = anthropic.Anthropic(api_key=api_key)
+
+
+def clean_json_response(content: str) -> str:
+    """Nettoie les réponses JSON en enlevant les backticks markdown et autres formatages"""
+    # Enlever les backticks markdown (```json ... ``` ou ``` ... ```)
+    content = re.sub(r'^```(?:json)?\s*\n?', '', content.strip())
+    content = re.sub(r'\n?```\s*$', '', content.strip())
+    return content.strip()
 
 
 @dataclass
@@ -159,6 +168,7 @@ Utilise cette information avec prudence - révéler ton rôle te met en danger."
             return """Tu es la SORCIÈRE.
 Objectif: Aider le village avec tes potions.
 Tu as une potion de vie (sauver la victime des loups) et une potion de mort (tuer quelqu'un).
+Tu ne peux utiliser qu'une seule potion par tour.
 Chaque potion ne peut être utilisée qu'une fois."""
 
         else:
@@ -194,7 +204,7 @@ Observe les comportements suspects."""
         return context
 
     async def generate_discussion(self, recent_messages: list[dict]) -> str:
-        """Génère une contribution à la discussion de jour"""
+        """Génère une contribution à la discussion de jour (ancienne méthode, à supprimer)"""
         # Mettre à jour la mémoire avec les messages récents
         for msg in recent_messages:
             if msg not in self.memory.conversations:
@@ -227,6 +237,99 @@ Ne mets pas de guillemets autour de ta réponse."""
         except Exception as e:
             # Fallback en cas d'erreur
             return self._fallback_discussion()
+
+    async def generate_discussion_message(
+        self,
+        recent_messages: list[dict],
+        can_ask_question: bool,
+        other_players: list[str]
+    ) -> dict:
+        """Génère un message de discussion avec possibilité de poser une question
+
+        Args:
+            recent_messages: Historique des messages de discussion
+            can_ask_question: True si le joueur peut encore poser une question ce tour
+            other_players: Liste des autres joueurs vivants
+
+        Returns:
+            dict avec "message" (str) et "question_to" (Optional[str])
+        """
+        # Mettre à jour la mémoire
+        for msg in recent_messages:
+            if msg not in self.memory.conversations:
+                self.memory.conversations.append(msg)
+
+        system_prompt = self._build_system_prompt()
+        game_context = self._build_game_context()
+
+        question_instruction = ""
+        if can_ask_question and other_players:
+            question_instruction = f"""
+Tu peux poser UNE question à un autre joueur si tu le souhaites.
+Joueurs que tu peux interpeller: {', '.join(other_players)}
+Pour poser une question, mentionne le joueur dans ton message (ex: "@Marie, tu as remarqué quelque chose ?")
+"""
+
+        user_prompt = f"""{game_context}
+
+C'est ton tour de parole. Tu dois participer à la discussion pour:
+1. Exprimer tes suspicions (vraies ou fausses selon ton rôle)
+2. Te défendre si nécessaire
+3. Orienter le vote vers ta cible
+{question_instruction}
+
+Réponds avec un JSON de cette forme:
+{{
+    "message": "Ton message de 1-3 phrases",
+    "question_to": "NomDuJoueur" ou null (si tu interpelles quelqu'un)
+}}
+
+IMPORTANT: Le message doit être naturel et dans ton style de personnage."""
+
+        try:
+            client = get_anthropic_client()
+            response = client.messages.create(
+                model=self.model,
+                max_tokens=200,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
+
+            content = response.content[0].text.strip()
+            content = clean_json_response(content)
+
+            # Parser le JSON
+            try:
+                result = json.loads(content)
+                message = result.get("message", "").strip()
+                question_to = result.get("question_to")
+
+                # Valider question_to
+                if question_to and question_to not in other_players:
+                    question_to = None
+
+                # Si pas de question ou pas autorisé, on met None
+                if not can_ask_question:
+                    question_to = None
+
+                return {
+                    "message": message if message else self._fallback_discussion(),
+                    "question_to": question_to
+                }
+            except json.JSONDecodeError:
+                # Si le parsing échoue, utiliser le contenu brut comme message
+                return {
+                    "message": content if content else self._fallback_discussion(),
+                    "question_to": None
+                }
+
+        except Exception as e:
+            return {
+                "message": self._fallback_discussion(),
+                "question_to": None
+            }
 
     def _fallback_discussion(self) -> str:
         """Message de fallback si l'API échoue"""
@@ -271,6 +374,7 @@ Réponds UNIQUEMENT avec un JSON de cette forme:
             )
 
             content = response.content[0].text.strip()
+            content = clean_json_response(content)
             # Parser le JSON
             try:
                 result = json.loads(content)
@@ -300,11 +404,26 @@ Réponds UNIQUEMENT avec un JSON de cette forme:
         targets = [p.name for p in self.game_state.get_alive_players()
                    if p.role != Role.LOUP_GAROU]
 
+        # RÈGLE : Ne jamais cibler l'humain la première nuit
+        is_first_night = self.game_state.day_number == 1
+        human_player = next((p for p in self.game_state.players if p.is_human), None)
+
+        if is_first_night and human_player and human_player.name in targets:
+            targets = [t for t in targets if t != human_player.name]
+            first_night_warning = f"\n⚠️ RÈGLE STRICTE: Tu ne peux PAS cibler {human_player.name} lors de cette première nuit."
+        else:
+            first_night_warning = ""
+
+        # Fallback si plus aucune cible disponible
+        if not targets:
+            targets = [p.name for p in self.game_state.get_alive_players()
+                       if p.role != Role.LOUP_GAROU]
+
         user_prompt = f"""{game_context}
 
-C'est la nuit. Toi et tes alliés loups ({', '.join(fellow_wolves)}) devez choisir une victime.
+C'est la nuit. Toi et tes alliés loups ({', '.join(fellow_wolves) if fellow_wolves else 'aucun'}) devez choisir une victime.
 
-Cibles possibles: {', '.join(targets)}
+Cibles possibles: {', '.join(targets)}{first_night_warning}
 
 Stratégie recommandée:
 - Éliminer la Voyante ou la Sorcière en priorité si tu les suspectes
@@ -326,6 +445,7 @@ Réponds UNIQUEMENT avec un JSON:
             )
 
             content = response.content[0].text.strip()
+            content = clean_json_response(content)
             try:
                 result = json.loads(content)
                 if result.get("target") in targets:
@@ -376,6 +496,7 @@ Réponds UNIQUEMENT avec un JSON:
             )
 
             content = response.content[0].text.strip()
+            content = clean_json_response(content)
             try:
                 result = json.loads(content)
                 if result.get("target") in targets:
@@ -427,6 +548,7 @@ Réponds UNIQUEMENT avec un JSON:
             )
 
             content = response.content[0].text.strip()
+            content = clean_json_response(content)
             try:
                 result = json.loads(content)
                 return {

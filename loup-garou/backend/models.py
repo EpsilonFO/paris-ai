@@ -89,6 +89,55 @@ class VoteResult:
 
 
 @dataclass
+class DiscussionMessage:
+    """Message d'un joueur pendant la phase de discussion"""
+    player: str
+    message: str
+    question_to: Optional[str] = None  # Nom du joueur interpellé (si question)
+    is_response: bool = False  # True si c'est une réponse à une question
+
+
+@dataclass
+class DiscussionState:
+    """État de la discussion du jour"""
+    messages: list[DiscussionMessage] = field(default_factory=list)
+    speaking_order: list[str] = field(default_factory=list)  # Ordre de parole
+    current_speaker_index: int = 0
+    questions_asked_by: dict[str, bool] = field(default_factory=dict)  # joueur -> a posé une question
+    rounds_completed: int = 0
+    max_rounds: int = 1
+    is_complete: bool = False
+
+    def get_current_speaker(self) -> Optional[str]:
+        """Retourne le joueur dont c'est le tour de parler"""
+        if self.is_complete or not self.speaking_order:
+            return None
+        if self.current_speaker_index >= len(self.speaking_order):
+            return None
+        return self.speaking_order[self.current_speaker_index]
+
+    def advance_speaker(self):
+        """Passe au joueur suivant"""
+        self.current_speaker_index += 1
+        if self.current_speaker_index >= len(self.speaking_order):
+            # Fin d'un tour
+            self.rounds_completed += 1
+            if self.rounds_completed >= self.max_rounds:
+                self.is_complete = True
+            else:
+                self.current_speaker_index = 0
+                self.questions_asked_by.clear()  # Reset des questions pour le prochain tour
+
+    def has_asked_question(self, player: str) -> bool:
+        """Vérifie si un joueur a déjà posé une question ce tour"""
+        return self.questions_asked_by.get(player, False)
+
+    def mark_question_asked(self, player: str):
+        """Marque qu'un joueur a posé une question"""
+        self.questions_asked_by[player] = True
+
+
+@dataclass
 class GameState:
     game_id: str
     players: list[Player]
@@ -99,6 +148,7 @@ class GameState:
     night_actions: NightActions
     history: list[dict]
     pending_action: Optional[str] = None
+    discussion_state: Optional["DiscussionState"] = None
 
     @classmethod
     def generate_id(cls) -> str:
