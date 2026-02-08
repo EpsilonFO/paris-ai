@@ -25,27 +25,26 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
   return (
     <div className="start-screen">
       <div className="start-content">
-        <h1 className="game-title">Loup-Garou</h1>
-        <p className="game-subtitle">Le jeu de roles mystere avec IA</p>
+        <h1 className="game-title">wAIr-wolves</h1>
 
         <form onSubmit={handleSubmit} className="start-form">
           {/* Configuration API Anthropic */}
 
           <div className="form-group">
-            <label htmlFor="playerName">Votre nom</label>
+            <label htmlFor="playerName">Your name</label>
             <input
               id="playerName"
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Entrez votre nom..."
+              placeholder="Enter your name..."
               disabled={isLoading}
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="numPlayers">Joueurs</label>
+              <label htmlFor="numPlayers">Players</label>
               <select
                 id="numPlayers"
                 value={numPlayers}
@@ -53,13 +52,13 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
                 disabled={isLoading}
               >
                 {[4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <option key={n} value={n}>{n} joueurs</option>
+                  <option key={n} value={n}>{n} players</option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="numWolves">Loups</label>
+              <label htmlFor="numWolves">Wolves</label>
               <select
                 id="numWolves"
                 value={numWolves}
@@ -87,19 +86,19 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
           <div className="roles-grid">
             <div className="role-card wolf">
               <span className="role-icon">🐺</span>
-              <span className="role-name">Loup-Garou</span>
+              <span className="role-name">wAIr-wolves</span>
             </div>
             <div className="role-card villager">
               <span className="role-icon">👨‍🌾</span>
-              <span className="role-name">Villageois</span>
+              <span className="role-name">Villager</span>
             </div>
             <div className="role-card seer">
               <span className="role-icon">🔮</span>
-              <span className="role-name">Voyante</span>
+              <span className="role-name">Seer</span>
             </div>
             <div className="role-card witch">
               <span className="role-icon">🧙‍♀️</span>
-              <span className="role-name">Sorciere</span>
+              <span className="role-name">Witch</span>
             </div>
           </div>
         </div>

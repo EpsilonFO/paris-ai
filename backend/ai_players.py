@@ -17,6 +17,8 @@ from .models import Player, Role, GameState, Phase
 # Client Anthropic (initialisé avec la clé API)
 _anthropic_client: Optional[anthropic.Anthropic] = None
 
+MALE_VOICES = ["axlOaUiFyOZhy4nv", "Hdf5cdfaGrLDTD63", "IB53xJtufx1sbfbt", "B09t5S64xLaKwXeW"]
+FEMALE_VOICES = ["1VAVLmmbQFDw7TMn", "GmGF_3ETsY2Zq7_w", "p1fSBpcmVWngBqVd", "3mM3xaoFjNMQa22C"]
 
 def get_anthropic_client() -> anthropic.Anthropic:
     """Récupère ou crée le client Anthropic"""
@@ -41,6 +43,8 @@ class AIPersonality:
     description: str
     traits: list[str]
     speech_style: str  # Comment l'IA doit parler
+    gender: str  # "male" ou "female"
+    voice_id: str = ""  # ID de la voix utilisée par l'IA
 
 
 # Predefined personalities for AI players
@@ -49,49 +53,65 @@ AI_PERSONALITIES = [
         name="Marie",
         description="Retired teacher, observant and methodical",
         traits=["analytical", "patient", "suspicious"],
-        speech_style="Speaks in a measured and thoughtful manner, uses educational metaphors"
+        speech_style="Speaks in a measured and thoughtful manner, uses educational metaphors",
+        gender="female",
+        voice_id="1VAVLmmbQFDw7TMn"
     ),
     AIPersonality(
         name="Pierre",
         description="Former soldier, direct and pragmatic",
         traits=["impulsive", "courageous", "frank"],
-        speech_style="Speaks directly and bluntly, sometimes harsh"
+        speech_style="Speaks directly and bluntly, sometimes harsh",
+        gender="male",
+        voice_id="axlOaUiFyOZhy4nv"
     ),
     AIPersonality(
         name="Sophie",
         description="Psychology student, subtle manipulator",
         traits=["charming", "intelligent", "cunning"],
-        speech_style="Speaks softly and persuasively, asks many questions"
+        speech_style="Speaks softly and persuasively, asks many questions",
+        gender="female",
+        voice_id="GmGF_3ETsY2Zq7_w"
     ),
     AIPersonality(
         name="Jean",
         description="Village baker, jovial but naive",
         traits=["friendly", "confident", "honest"],
-        speech_style="Speaks simply with popular expressions, makes jokes"
+        speech_style="Speaks simply with popular expressions, makes jokes",
+        gender="male",
+        voice_id="Hdf5cdfaGrLDTD63"
     ),
     AIPersonality(
         name="Élise",
         description="Forensic doctor, cold and logical",
         traits=["rational", "detached", "precise"],
-        speech_style="Speaks in a clinical and factual manner, analyzes behaviors"
+        speech_style="Speaks in a clinical and factual manner, analyzes behaviors",
+        gender="female",
+        voice_id="3mM3xaoFjNMQa22C"
     ),
     AIPersonality(
         name="Lucas",
         description="Rebellious teenager, unpredictable",
         traits=["provocative", "instinctive", "changeable"],
-        speech_style="Speaks casually with slang, provokes others"
+        speech_style="Speaks casually with slang, provokes others",
+        gender="male",
+        voice_id="IB53xJtufx1sbfbt"
     ),
     AIPersonality(
         name="Margot",
         description="Mysterious librarian, silent but insightful",
         traits=["discrete", "observant", "enigmatic"],
-        speech_style="Speaks little but each word counts, makes cryptic remarks"
+        speech_style="Speaks little but each word counts, makes cryptic remarks",
+        gender="female",
+        voice_id="p1fSBpcmVWngBqVd"
     ),
     AIPersonality(
         name="Henri",
         description="Village mayor, political and calculating",
         traits=["diplomat", "influential", "opportunist"],
-        speech_style="Speaks in a political manner, tries to rally people to his cause"
+        speech_style="Speaks in a political manner, tries to rally people to his cause",
+        gender="male",
+        voice_id="B09t5S64xLaKwXeW"
     ),
 ]
 
@@ -493,14 +513,26 @@ def assign_personalities(players: list[Player]) -> dict[str, AIPersonality]:
     """Assigne des personnalités aux joueurs IA"""
     available = AI_PERSONALITIES.copy()
     random.shuffle(available)
+    available_male_voices = MALE_VOICES.copy()
+    available_female_voices = FEMALE_VOICES.copy()
+    random.shuffle(available_male_voices)
+    random.shuffle(available_female_voices)
 
     assignments = {}
     for player in players:
         if not player.is_human:
             if available:
                 personality = available.pop()
+                if personality.gender == "male" and available_male_voices:
+                    personality.voice_id = available_male_voices.pop()
+                elif personality.gender == "female" and available_female_voices:
+                    personality.voice_id = available_female_voices.pop()
+                else:
+                    # Fallback si on manque de voix (utilise la première voix disponible)
+                    personality.voice_id = MALE_VOICES[0] if personality.gender == "male" else FEMALE_VOICES[0]
                 player.name = personality.name
                 player.personality = personality.description
+                player.voice_id = personality.voice_id
                 assignments[player.name] = personality
 
     return assignments
