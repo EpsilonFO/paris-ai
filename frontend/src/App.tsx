@@ -198,6 +198,10 @@ function App() {
       addEvent(is_wolf ? 'death' : 'saved', `${target} est ${role}`);
     }
 
+    if (result.witch_victim) {
+      setWitchInfo((prev) => ({ ...prev, victim: result.witch_victim }));
+    }
+
     if (result.night_events) {
       result.night_events.deaths.forEach((death) => {
         addEvent('death', `${death.name} (${death.role}) a ete tue par ${death.cause}`);
@@ -262,10 +266,41 @@ function App() {
     setSkipDayVoteExecuted(false);
   }, [gameState?.day_number]);
 
+  // Automatiser les actions quand le joueur est mort
+  useEffect(() => {
+    const humanPlayer = gameState?.players.find(p => p.is_human);
+    const isPlayerDead = humanPlayer && !humanPlayer.is_alive;
+
+    // Ne pas continuer si la partie est terminée
+    if (gameState?.status !== 'en_cours') {
+      return;
+    }
+
+    if (isPlayerDead && (gameState?.pending_action === 'auto_night' || gameState?.pending_action === 'auto_day') && !isLoading) {
+      setIsLoading(true);
+      sendAction(gameId!, gameState.pending_action!).then((result) => {
+        processActionResult(result);
+        return getGameState(gameId!);
+      }).then((newState) => {
+        setGameState(newState);
+      }).catch((error) => {
+        console.error('Auto action failed:', error);
+        addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action échouée'}`);
+      }).finally(() => {
+        setIsLoading(false);
+      });
+    }
+  }, [gameState?.pending_action, gameState?.players, gameState?.status, isLoading]);
+
   // Gérer le cas où le joueur est mort pendant le jour
   useEffect(() => {
     const humanPlayer = gameState?.players.find(p => p.is_human);
     const isPlayerDead = humanPlayer && !humanPlayer.is_alive;
+
+    // Ne pas continuer si la partie est terminée
+    if (gameState?.status !== 'en_cours') {
+      return;
+    }
 
     if (gameState?.phase === 'jour' && gameState.pending_action === 'day_vote' && isPlayerDead && !isLoading && !skipDayVoteExecuted) {
       // Le joueur est mort mais c'est le moment de voter - faire voter les IA automatiquement
@@ -276,16 +311,15 @@ function App() {
         return getGameState(gameId!);
       }).then((newState) => {
         setGameState(newState);
-        // Ne pas charger les discussions - le vote est terminé
       }).catch((error) => {
         console.error('Skip day vote failed:', error);
         addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action échouée'}`);
-        setSkipDayVoteExecuted(false); // Réessayer si erreur
+        setSkipDayVoteExecuted(false);
       }).finally(() => {
         setIsLoading(false);
       });
     }
-  }, [gameState?.phase, gameState?.pending_action, gameState?.day_number, isLoading, skipDayVoteExecuted]);
+  }, [gameState?.phase, gameState?.pending_action, gameState?.day_number, gameState?.status, isLoading, skipDayVoteExecuted]);
 
   if (gameOver) {
     return <GameOver winner={gameOver.winner} onRestart={handleRestart} />;
@@ -317,11 +351,15 @@ function App() {
         <div className="action-panel spectator-panel">
           <div className="action-title">⚰️ Vous êtes mort</div>
           <div className="action-description">
-            {gameState.phase === 'jour' && gameState.pending_action === 'day_vote'
+            {gameState.pending_action === 'auto_night'
+              ? 'Les autres joueurs agissent durant la nuit...'
+              : gameState.pending_action === 'auto_day'
               ? 'Les autres joueurs votent...'
               : 'En attente du prochain événement...'}
           </div>
-          <div className="spectator-info">Vous observez le jeu en tant que spectateur</div>
+          <div className="spectator-info">
+            {isLoading ? '⏳ Traitement en cours...' : 'Vous observez le jeu en tant que spectateur'}
+          </div>
         </div>
       ) : showActionPanel ? (
         <ActionPanel

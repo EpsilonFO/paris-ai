@@ -127,7 +127,7 @@ class GameEngine:
             elif human_role == Role.VOYANTE:
                 return "seer_check"
             elif human_role == Role.SORCIERE:
-                return "witch_choice"
+                return "wait_night"  # La sorcière attend que les loups choisissent d'abord
             else:
                 return "wait_night"  # Les villageois attendent
         else:
@@ -330,15 +330,12 @@ class GameEngine:
             wolf_votes = []
             for player in game.get_wolves():
                 if not player.is_human and player.is_alive:
-                    print("%"*100)
                     agent = agents.get(player.name)
                     if agent:
-                        print("&"*100)
                         fellow_wolves = [p.name for p in game.get_wolves() if p.name != player.name]
                         vote_result = await agent.generate_wolf_vote(fellow_wolves)
                         if vote_result.get("target"):
                             wolf_votes.append(vote_result["target"])
-                            print("0"*100)
 
             if wolf_votes:
                 vote_count = Counter(wolf_votes)
