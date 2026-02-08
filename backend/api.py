@@ -3,6 +3,7 @@ API FastAPI pour le jeu du Loup-Garou
 Avec agents IA Anthropic Claude
 """
 from fastapi import FastAPI, HTTPException
+from fastapi_mcp import FastApiMCP
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -18,6 +19,9 @@ app = FastAPI(
     description="API pour jouer au Loup-Garou avec des agents IA Anthropic Claude",
     version="2.0.0"
 )
+
+mcp = FastApiMCP(app)
+mcp.mount()
 
 # CORS pour permettre les appels depuis le frontend
 app.add_middleware(
@@ -252,6 +256,8 @@ def _generate_intro_message(role: Role) -> str:
         ),
     }
     return messages.get(role, "Bienvenue dans la partie !")
+
+mcp.setup_server()
 
 
 # Pour exécuter avec uvicorn
