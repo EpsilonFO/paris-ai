@@ -22,10 +22,14 @@ body {
   position: relative;
 }
 
+.app.full-screen {
+  margin-left: 0 !important;
+}
+
 .wolf-allies {
   position: fixed;
   top: 20px;
-  left: 20px;
+  left: 370px;
   background: rgba(139, 0, 0, 0.9);
   color: white;
   padding: 10px 20px;
@@ -33,4 +37,23 @@ body {
   font-size: 14px;
   z-index: 100;
   backdrop-filter: blur(10px);
+}
+
+@media (max-width: 1200px) {
+  .wolf-allies {
+    left: 320px;
+  }
+}
+
+@media (max-width: 900px) {
+  .wolf-allies {
+    left: 270px;
+  }
+}
+
+@media (max-width: 600px) {
+  .wolf-allies {
+    left: 20px;
+    top: 60px;
+  }
 }

@@ -2,9 +2,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: relative;
+  position: absolute;
   padding: 10px;
   transition: all 0.3s ease;
+  /* Position will be set via inline style from component */
 }
 
 .player-avatar-container.selectable {

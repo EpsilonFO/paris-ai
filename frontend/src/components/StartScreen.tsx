@@ -15,20 +15,9 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
   const [apiKeySet, setApiKeySet] = useState(false);
   const [apiKeyError, setApiKeyError] = useState('');
 
-  const handleSetApiKey = async () => {
-    if (!apiKey.trim()) return;
-    try {
-      await setAnthropicKey(apiKey.trim());
-      setApiKeySet(true);
-      setApiKeyError('');
-    } catch {
-      setApiKeyError('Erreur lors de la configuration de la cle API');
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (playerName.trim() && apiKeySet) {
+    if (playerName.trim()) {
       onStartGame(playerName.trim(), numPlayers, numWolves);
     }
   };
@@ -36,72 +25,45 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
   return (
     <div className="start-screen">
       <div className="start-content">
-        <h1 className="game-title">Loup-Garou</h1>
-        <p className="game-subtitle">Le jeu de roles mystere avec IA</p>
+        <h1 className="game-title">wAIr-wolves</h1>
 
         <form onSubmit={handleSubmit} className="start-form">
           {/* Configuration API Anthropic */}
-          <div className="form-group api-key-group">
-            <label htmlFor="apiKey">Cle API Anthropic</label>
-            <div className="api-key-input">
-              <input
-                id="apiKey"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-ant-..."
-                disabled={isLoading || apiKeySet}
-              />
-              {!apiKeySet ? (
-                <button
-                  type="button"
-                  className="api-key-button"
-                  onClick={handleSetApiKey}
-                  disabled={!apiKey.trim() || isLoading}
-                >
-                  Configurer
-                </button>
-              ) : (
-                <span className="api-key-success">Configuree</span>
-              )}
-            </div>
-            {apiKeyError && <span className="api-key-error">{apiKeyError}</span>}
-          </div>
 
           <div className="form-group">
-            <label htmlFor="playerName">Votre nom</label>
+            <label htmlFor="playerName">Your name</label>
             <input
               id="playerName"
               type="text"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Entrez votre nom..."
-              disabled={isLoading || !apiKeySet}
+              placeholder="Enter your name..."
+              disabled={isLoading}
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="numPlayers">Joueurs</label>
+              <label htmlFor="numPlayers">Players</label>
               <select
                 id="numPlayers"
                 value={numPlayers}
                 onChange={(e) => setNumPlayers(Number(e.target.value))}
-                disabled={isLoading || !apiKeySet}
+                disabled={isLoading}
               >
                 {[4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <option key={n} value={n}>{n} joueurs</option>
+                  <option key={n} value={n}>{n} players</option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="numWolves">Loups</label>
+              <label htmlFor="numWolves">Wolves</label>
               <select
                 id="numWolves"
                 value={numWolves}
                 onChange={(e) => setNumWolves(Number(e.target.value))}
-                disabled={isLoading || !apiKeySet}
+                disabled={isLoading}
               >
                 {[1, 2, 3].map((n) => (
                   <option key={n} value={n}>{n} loup{n > 1 ? 's' : ''}</option>
@@ -113,7 +75,7 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
           <button
             type="submit"
             className="start-button"
-            disabled={!playerName.trim() || !apiKeySet || isLoading}
+            disabled={!playerName.trim() || isLoading}
           >
             {isLoading ? 'Creation...' : 'Commencer la partie'}
           </button>
@@ -124,19 +86,19 @@ export function StartScreen({ onStartGame, isLoading }: StartScreenProps) {
           <div className="roles-grid">
             <div className="role-card wolf">
               <span className="role-icon">🐺</span>
-              <span className="role-name">Loup-Garou</span>
+              <span className="role-name">wAIr-wolves</span>
             </div>
             <div className="role-card villager">
               <span className="role-icon">👨‍🌾</span>
-              <span className="role-name">Villageois</span>
+              <span className="role-name">Villager</span>
             </div>
             <div className="role-card seer">
               <span className="role-icon">🔮</span>
-              <span className="role-name">Voyante</span>
+              <span className="role-name">Seer</span>
             </div>
             <div className="role-card witch">
               <span className="role-icon">🧙‍♀️</span>
-              <span className="role-name">Sorciere</span>
+              <span className="role-name">Witch</span>
             </div>
           </div>
         </div>

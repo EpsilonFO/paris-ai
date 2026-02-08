@@ -4,6 +4,7 @@ export interface Player {
   is_human: boolean;
   role?: string;
   personality?: string;
+  voice_id?: string;
 }
 
 export interface GameState {
@@ -43,5 +44,6 @@ export interface ActionResult {
   eliminated?: { name: string; role: string; votes: number };
   tie?: boolean;
   seer_result?: { target: string; role: string; is_wolf: boolean };
+  witch_victim?: string;
   game_over?: { winner: string; status: string };
 }

@@ -54,6 +54,7 @@ class Player:
     is_alive: bool = True
     is_human: bool = False
     personality: Optional[str] = None
+    voice_id: Optional[str] = None  # ID de la voix TTS Gradium
 
     def to_dict(self, reveal_role: bool = False) -> dict:
         data = {
@@ -61,6 +62,10 @@ class Player:
             "is_alive": self.is_alive,
             "is_human": self.is_human,
         }
+        if self.personality:
+            data["personality"] = self.personality
+        if self.voice_id:
+            data["voice_id"] = self.voice_id
         if reveal_role or not self.is_alive:
             data["role"] = self.role.display_name
         return data
@@ -99,6 +104,8 @@ class GameState:
     night_actions: NightActions
     history: list[dict]
     pending_action: Optional[str] = None
+    discussions_history: dict[int, list[dict]] = field(default_factory=dict)  # day -> discussions
+    seer_discoveries: dict[str, str] = field(default_factory=dict)  # player_name -> role_display_name
 
     @classmethod
     def generate_id(cls) -> str:
@@ -151,6 +158,8 @@ class GameState:
                 reveal = True
             elif human_player and human_player.role == Role.LOUP_GAROU and p.role == Role.LOUP_GAROU:
                 reveal = True
+            elif p.name in self.seer_discoveries:
+                reveal = True
             players_data.append(p.to_dict(reveal_role=reveal))
 
         return {
@@ -161,4 +170,6 @@ class GameState:
             "players": players_data,
             "alive_count": len(self.get_alive_players()),
             "pending_action": self.pending_action,
+            "history": self.history,
+            "discussions_history": {str(k): v for k, v in self.discussions_history.items()},
         }

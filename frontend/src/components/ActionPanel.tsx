@@ -1,5 +1,4 @@
 import './ActionPanel.css';
-import { useState } from 'react';
 
 interface ActionPanelProps {
   pendingAction: string | null;
@@ -28,50 +27,48 @@ export function ActionPanel({
   onWitchSave,
   onWitchKill,
   isLoading,
-  onSendMessage,
 }: ActionPanelProps) {
-  const [message, setMessage] = useState('');
   const getActionText = () => {
     switch (pendingAction) {
       case 'wolf_vote':
-        return 'Choisissez une victime pour les loups';
+        return 'Choose a victim for the werewolves';
       case 'seer_check':
-        return 'Choisissez un joueur a examiner';
+        return 'Choose a player to examine';
       case 'witch_choice':
-        return 'Utilisez vos potions';
+        return 'Use your potions';
       case 'wait_night':
-        return 'La nuit tombe sur le village...';
+        return 'Night falls on the village...';
       case 'human_discussion':
-        return "C'est votre tour de parler";
+        return "It's your turn to speak";
       case 'day_vote':
-        return 'Votez pour eliminer un suspect';
+        return 'Vote to eliminate a suspect';
       default:
-        return 'En attente...';
+        return 'Waiting...';
     }
   };
 
   const getButtonText = () => {
     switch (pendingAction) {
       case 'wolf_vote':
-        return `Attaquer ${selectedTarget || '...'}`;
+        return `Attack ${selectedTarget || '...'}`;
       case 'seer_check':
-        return `Examiner ${selectedTarget || '...'}`;
+        return `Examine ${selectedTarget || '...'}`;
       case 'day_vote':
-        return `Voter contre ${selectedTarget || '...'}`;
+        return `Vote against ${selectedTarget || '...'}`;
       default:
-        return 'Confirmer';
+        return 'Confirm';
     }
   };
 
   if (pendingAction === 'witch_choice') {
     return (
       <div className="action-panel witch-panel">
-        <div className="action-title">Vous etes la Sorciere</div>
+        <div className="action-title">You are the Witch</div>
         <div className="action-description">{getActionText()}</div>
 
         {wolfVictim && (
           <div className="witch-info">
-            Les loups ont attaque <strong>{wolfVictim}</strong>
+            The werewolves attacked <strong>{wolfVictim}</strong>
           </div>
         )}
 
@@ -82,7 +79,7 @@ export function ActionPanel({
               onClick={onWitchSave}
               disabled={isLoading}
             >
-              Sauver {wolfVictim}
+              Save {wolfVictim}
             </button>
           )}
 
@@ -92,7 +89,7 @@ export function ActionPanel({
               onClick={onWitchKill}
               disabled={isLoading}
             >
-              Tuer {selectedTarget}
+              Kill {selectedTarget}
             </button>
           )}
         </div>
@@ -102,53 +99,8 @@ export function ActionPanel({
           onClick={onSkip}
           disabled={isLoading}
         >
-          Ne rien faire
+          Do nothing
         </button>
-      </div>
-    );
-  }
-
-  if (pendingAction === 'human_discussion') {
-    return (
-      <div className="action-panel discussion-panel">
-        <div className="action-title">Discussion du village</div>
-        <div className="action-description">{getActionText()}</div>
-
-        <textarea
-          className="discussion-input"
-          placeholder="Que voulez-vous dire aux autres joueurs ?"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={isLoading}
-          rows={3}
-        />
-
-        <div className="discussion-buttons">
-          <button
-            className="action-button"
-            onClick={() => {
-              if (onSendMessage && message.trim()) {
-                onSendMessage(message.trim());
-                setMessage('');
-              }
-            }}
-            disabled={!message.trim() || isLoading}
-          >
-            {isLoading ? 'Envoi...' : 'Envoyer'}
-          </button>
-
-          <button
-            className="action-button skip"
-            onClick={() => {
-              if (onSendMessage) {
-                onSendMessage('');
-              }
-            }}
-            disabled={isLoading}
-          >
-            Passer mon tour
-          </button>
-        </div>
       </div>
     );
   }
@@ -156,14 +108,14 @@ export function ActionPanel({
   if (pendingAction === 'wait_night') {
     return (
       <div className="action-panel">
-        <div className="action-title">Nuit paisible</div>
+        <div className="action-title">Peaceful night</div>
         <div className="action-description">{getActionText()}</div>
         <button
           className="action-button"
           onClick={onAction}
           disabled={isLoading}
         >
-          {isLoading ? 'En cours...' : 'Attendre'}
+          {isLoading ? 'Processing...' : 'Wait'}
         </button>
       </div>
     );
@@ -171,7 +123,7 @@ export function ActionPanel({
 
   return (
     <div className="action-panel">
-      <div className="action-title">Votre role: {yourRole}</div>
+      <div className="action-title">Your role: {yourRole}</div>
       <div className="action-description">{getActionText()}</div>
 
       <button
@@ -179,7 +131,7 @@ export function ActionPanel({
         onClick={onAction}
         disabled={!selectedTarget || isLoading}
       >
-        {isLoading ? 'En cours...' : getButtonText()}
+        {isLoading ? 'Processing...' : getButtonText()}
       </button>
     </div>
   );

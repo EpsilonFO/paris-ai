@@ -3,45 +3,74 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, #3d2817 0%, #2d1f10 100%);
   padding: 20px;
+  position: relative;
+}
+
+.start-screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+  pointer-events: none;
+  z-index: 0;
 }
 
 .start-content {
   text-align: center;
   max-width: 500px;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .game-title {
   font-size: 48px;
-  color: #FFD700;
+  color: rgba(200, 160, 100, 0.95);
   margin: 0;
-  text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+  font-family: 'Georgia', serif;
+  letter-spacing: 3px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   animation: glow 2s ease-in-out infinite alternate;
 }
 
 @keyframes glow {
   from {
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(200, 160, 100, 0.2);
   }
   to {
-    text-shadow: 0 0 40px rgba(255, 215, 0, 0.8);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 0 40px rgba(200, 160, 100, 0.4);
   }
 }
 
 .game-subtitle {
-  color: #AAA;
-  font-size: 18px;
+  color: rgba(200, 160, 100, 0.6);
+  font-size: 16px;
   margin: 10px 0 40px;
+  font-family: 'Georgia', serif;
+  font-style: italic;
 }
 
 .start-form {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
+  background: linear-gradient(135deg, #f5e6c8 0%, #e8d5a8 50%, #dcc896 100%);
+  border: 3px solid rgba(200, 160, 100, 0.5);
+  border-radius: 8px;
   padding: 30px;
   margin-bottom: 30px;
+  box-shadow:
+    0 0 30px rgba(200, 160, 100, 0.15),
+    inset 0 0 20px rgba(200, 160, 100, 0.05);
 }
 
 .form-group {
@@ -51,20 +80,24 @@
 
 .form-group label {
   display: block;
-  color: #CCC;
+  color: #4a3520;
   margin-bottom: 8px;
   font-size: 14px;
+  font-family: 'Georgia', serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .form-group input,
 .form-group select {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  color: white;
+  border: 2px solid rgba(200, 160, 100, 0.4);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #4a3520;
   font-size: 16px;
+  font-family: 'Georgia', serif;
   transition: all 0.3s ease;
   box-sizing: border-box;
 }
@@ -72,19 +105,25 @@
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #FFD700;
-  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+  border-color: rgba(200, 160, 100, 0.8);
+  box-shadow: 0 0 12px rgba(200, 160, 100, 0.3);
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .form-group input::placeholder {
-  color: #888;
+  color: rgba(74, 53, 32, 0.4);
+}
+
+.form-group select option {
+  background: #f5e6c8;
+  color: #4a3520;
 }
 
 /* API Key styles */
 .api-key-group {
   margin-bottom: 25px;
   padding-bottom: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(200, 160, 100, 0.3);
 }
 
 .api-key-input {
@@ -98,19 +137,21 @@
 
 .api-key-button {
   padding: 12px 20px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
-  color: white;
+  border: 2px solid rgba(200, 160, 100, 0.5);
+  border-radius: 6px;
+  background: linear-gradient(135deg, #3d2817 0%, #2d1f10 100%);
+  color: rgba(200, 160, 100, 0.9);
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 700;
+  font-family: 'Georgia', serif;
   cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
 }
 
 .api-key-button:hover:not(:disabled) {
-  transform: scale(1.05);
+  border-color: rgba(200, 160, 100, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .api-key-button:disabled {
@@ -122,18 +163,21 @@
   display: flex;
   align-items: center;
   padding: 0 15px;
-  background: rgba(0, 176, 155, 0.3);
-  border-radius: 10px;
-  color: #96c93d;
+  background: rgba(34, 120, 50, 0.15);
+  border: 2px solid rgba(34, 120, 50, 0.3);
+  border-radius: 6px;
+  color: #2a6b30;
   font-weight: bold;
   font-size: 14px;
+  font-family: 'Georgia', serif;
 }
 
 .api-key-error {
   display: block;
   margin-top: 8px;
-  color: #ff6b6b;
+  color: #8b0000;
   font-size: 13px;
+  font-family: 'Georgia', serif;
 }
 
 .form-row {
@@ -148,20 +192,23 @@
 .start-button {
   width: 100%;
   padding: 15px 30px;
-  border: none;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  border: 2px solid rgba(200, 160, 100, 0.5);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3d2817 0%, #2d1f10 100%);
+  color: rgba(200, 160, 100, 0.95);
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 700;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.3s ease;
   margin-top: 10px;
 }
 
 .start-button:hover:not(:disabled) {
-  transform: scale(1.02);
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  border-color: rgba(200, 160, 100, 0.8);
 }
 
 .start-button:disabled {
@@ -170,36 +217,42 @@
 }
 
 .roles-info {
-  margin-top: 20px;
+  margin-top: 24px;
 }
 
 .roles-info h3 {
-  color: #FFD700;
+  color: rgba(200, 160, 100, 0.9);
   margin-bottom: 15px;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
+  font-size: 18px;
 }
 
 .roles-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
+  gap: 12px;
 }
 
 .role-card {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 15px;
-  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 14px;
   display: flex;
   align-items: center;
   gap: 10px;
+  backdrop-filter: blur(5px);
 }
 
 .role-icon {
-  font-size: 30px;
+  font-size: 28px;
 }
 
 .role-name {
-  color: white;
+  color: rgba(200, 160, 100, 0.85);
   font-size: 14px;
+  font-family: 'Georgia', serif;
+  font-weight: 600;
 }
 
 .role-card.wolf {
@@ -207,20 +260,24 @@
 }
 
 .role-card.villager {
-  border: 2px solid rgba(34, 139, 34, 0.5);
+  border: 2px solid rgba(200, 160, 100, 0.4);
 }
 
 .role-card.seer {
-  border: 2px solid rgba(153, 50, 204, 0.5);
+  border: 2px solid rgba(160, 120, 200, 0.4);
 }
 
 .role-card.witch {
-  border: 2px solid rgba(75, 0, 130, 0.5);
+  border: 2px solid rgba(100, 80, 160, 0.4);
 }
 
 @media (max-width: 500px) {
   .game-title {
     font-size: 36px;
+  }
+
+  .start-form {
+    padding: 20px;
   }
 
   .roles-grid {
