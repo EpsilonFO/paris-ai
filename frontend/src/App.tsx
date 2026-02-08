@@ -1,19 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { GameState, Discussion, CreateGameResponse, ActionResult } from './types';
 import { createGame, getGameState, sendAction, getDiscussions, sendMessage } from './api';
 import { StartScreen } from './components/StartScreen';
 import { GameBoard } from './components/GameBoard';
 import { ActionPanel } from './components/ActionPanel';
-import { EventLog } from './components/EventLog';
 import { GameOver } from './components/GameOver';
 import { DiscussionPanel } from './components/DiscussionPanel';
+import { getTTSService } from './services/ttsService';
 import './App.css';
-
-interface GameEvent {
-  id: number;
-  type: 'death' | 'saved' | 'vote' | 'info';
-  message: string;
-}
 
 function App() {
   const [gameId, setGameId] = useState<string | null>(null);
@@ -22,7 +16,6 @@ function App() {
   const [fellowWolves, setFellowWolves] = useState<string[]>([]);
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
-  const [events, setEvents] = useState<GameEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [gameOver, setGameOver] = useState<{ winner: string } | null>(null);
   const [witchInfo, setWitchInfo] = useState<{
@@ -32,10 +25,6 @@ function App() {
   }>({ hasLife: true, hasDeath: true });
   const [skipDayVoteExecuted, setSkipDayVoteExecuted] = useState(false);
 
-  const addEvent = useCallback((type: GameEvent['type'], message: string) => {
-    setEvents((prev) => [...prev, { id: Date.now(), type, message }]);
-  }, []);
-
   const handleStartGame = async (playerName: string, numPlayers: number, numWolves: number) => {
     setIsLoading(true);
     try {
@@ -44,17 +33,10 @@ function App() {
       setYourRole(response.your_role);
       setFellowWolves(response.fellow_wolves || []);
 
-      addEvent('info', response.message);
-
-      if (response.fellow_wolves?.length) {
-        addEvent('info', `Vos allies loups: ${response.fellow_wolves.join(', ')}`);
-      }
-
       const state = await getGameState(response.game_id);
       setGameState(state);
     } catch (error) {
       console.error('Failed to start game:', error);
-      addEvent('info', 'Erreur: impossible de creer la partie');
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +73,6 @@ function App() {
       }
     } catch (error) {
       console.error('Action failed:', error);
-      addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action echouee'}`);
     } finally {
       setIsLoading(false);
     }
@@ -161,22 +142,40 @@ function App() {
   };
 
   const handleSendMessage = async (message: string) => {
-    if (!gameId) return;
+    if (!gameId || !gameState) return;
     setIsLoading(true);
     try {
-      const result = await sendMessage(gameId, message);
+      // Trouver le nom du joueur humain
+      const humanPlayer = gameState.players.find(p => p.is_human);
+      const playerName = humanPlayer?.name || 'Vous';
 
+      // Afficher immédiatement le message du joueur dans les discussions
       if (message) {
-        addEvent('info', `Vous avez dit: "${message}"`);
-      } else {
-        addEvent('info', 'Vous avez passe votre tour');
+        setDiscussions((prev) => [...prev, { player: playerName, message }]);
       }
 
-      // Afficher les nouvelles discussions des IA
+      const result = await sendMessage(gameId, message);
+
+      // Afficher les nouvelles discussions des IA avec TTS (uniquement en phase JOUR)
       if (result.discussions && result.discussions.length > 0) {
+        const ttsService = getTTSService();
+
         for (const disc of result.discussions) {
           await new Promise((resolve) => setTimeout(resolve, 800));
           setDiscussions((prev) => [...prev, disc]);
+
+          // Jouer le TTS uniquement pour les messages des IA pendant la phase JOUR
+          if (gameState.phase === 'jour') {
+            try {
+              // Trouver le voice_id du joueur qui parle
+              const speaker = gameState.players.find(p => p.name === disc.player);
+              const voiceId = speaker?.voice_id || 'YTpq7expH9539ERJ'; // Voix par défaut
+              await ttsService.playText(disc.message, voiceId);
+            } catch (error) {
+              console.error('TTS playback failed:', error);
+              // Continuer même si le TTS échoue
+            }
+          }
         }
       }
 
@@ -185,51 +184,41 @@ function App() {
       setGameState(newState);
     } catch (error) {
       console.error('Send message failed:', error);
-      addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'envoi echoue'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const processActionResult = (result: ActionResult) => {
-    result.messages.forEach((msg) => addEvent('info', msg));
-
-    if (result.seer_result) {
-      const { target, role, is_wolf } = result.seer_result;
-      addEvent(is_wolf ? 'death' : 'saved', `${target} est ${role}`);
-    }
-
-    if (result.night_events) {
-      result.night_events.deaths.forEach((death) => {
-        addEvent('death', `${death.name} (${death.role}) a ete tue par ${death.cause}`);
-      });
-      if (result.night_events.saved) {
-        addEvent('saved', `${result.night_events.saved} a ete sauve par la sorciere`);
-      }
-    }
-
-    if (result.eliminated) {
-      addEvent('vote', `${result.eliminated.name} (${result.eliminated.role}) elimine avec ${result.eliminated.votes} votes`);
-    }
-
-    if (result.tie) {
-      addEvent('vote', 'Egalite ! Personne n\'est elimine');
-    }
-
     if (result.game_over) {
       setGameOver({ winner: result.game_over.winner });
     }
   };
 
   const loadDiscussions = async () => {
-    if (!gameId) return;
+    if (!gameId || !gameState) return;
     try {
       const disc = await getDiscussions(gameId);
       setDiscussions([]);
 
+      const ttsService = getTTSService();
+
       for (let i = 0; i < disc.length; i++) {
         await new Promise((resolve) => setTimeout(resolve, 800));
         setDiscussions((prev) => [...prev, disc[i]]);
+
+        // Jouer le TTS uniquement pour les messages des IA pendant la phase JOUR
+        if (gameState.phase === 'jour') {
+          try {
+            // Trouver le voice_id du joueur qui parle
+            const speaker = gameState.players.find(p => p.name === disc[i].player);
+            const voiceId = speaker?.voice_id || 'YTpq7expH9539ERJ'; // Voix par défaut
+            await ttsService.playText(disc[i].message, voiceId);
+          } catch (error) {
+            console.error('TTS playback failed:', error);
+            // Continuer même si le TTS échoue
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to load discussions:', error);
@@ -243,7 +232,6 @@ function App() {
     setFellowWolves([]);
     setDiscussions([]);
     setSelectedTarget(null);
-    setEvents([]);
     setGameOver(null);
     setWitchInfo({ hasLife: true, hasDeath: true });
     setSkipDayVoteExecuted(false);
@@ -280,7 +268,6 @@ function App() {
         // Ne pas charger les discussions - le vote est terminé
       }).catch((error) => {
         console.error('Skip day vote failed:', error);
-        addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action échouée'}`);
         setSkipDayVoteExecuted(false); // Réessayer si erreur
       }).finally(() => {
         setIsLoading(false);
@@ -329,8 +316,6 @@ function App() {
         selectableMode={isSelectableMode || isWitchSelectMode}
         onPlayerSelect={setSelectedTarget}
       />
-
-      <EventLog events={events} />
 
       {showActionPanel && gameState.players.find(p => p.is_human && !p.is_alive) ? (
         <div className="action-panel spectator-panel">

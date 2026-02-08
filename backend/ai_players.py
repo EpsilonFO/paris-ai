@@ -39,7 +39,13 @@ class AIPersonality:
     description: str
     traits: list[str]
     speech_style: str  # Comment l'IA doit parler
+    gender: str  # "male" ou "female"
+    voice_id: str = ""  # ID de la voix Gradium (assigné dynamiquement)
 
+
+# Voix TTS disponibles par genre
+MALE_VOICES = ["axlOaUiFyOZhy4nv", "Hdf5cdfaGrLDTD63", "IB53xJtufx1sbfbt", "B09t5S64xLaKwXeW"]
+FEMALE_VOICES = ["1VAVLmmbQFDw7TMn", "GmGF_3ETsY2Zq7_w", "p1fSBpcmVWngBqVd", "3mM3xaoFjNMQa22C"]
 
 # Personnalités prédéfinies pour les joueurs IA
 AI_PERSONALITIES = [
@@ -47,49 +53,57 @@ AI_PERSONALITIES = [
         name="Marie",
         description="Institutrice à la retraite, observatrice et méthodique",
         traits=["analytique", "patiente", "méfiante"],
-        speech_style="Parle de manière posée et réfléchie, utilise des métaphores éducatives"
+        speech_style="Parle de manière posée et réfléchie, utilise des métaphores éducatives",
+        gender="female"
     ),
     AIPersonality(
         name="Pierre",
         description="Ancien militaire, direct et pragmatique",
         traits=["impulsif", "courageux", "franc"],
-        speech_style="Parle de manière directe et sans détour, parfois brusque"
+        speech_style="Parle de manière directe et sans détour, parfois brusque",
+        gender="male"
     ),
     AIPersonality(
         name="Sophie",
         description="Étudiante en psychologie, manipulatrice subtile",
         traits=["charmante", "intelligente", "rusée"],
-        speech_style="Parle de manière douce et persuasive, pose beaucoup de questions"
+        speech_style="Parle de manière douce et persuasive, pose beaucoup de questions",
+        gender="female"
     ),
     AIPersonality(
         name="Jean",
         description="Boulanger du village, jovial mais naïf",
         traits=["sympathique", "confiant", "honnête"],
-        speech_style="Parle simplement avec des expressions populaires, fait des blagues"
+        speech_style="Parle simplement avec des expressions populaires, fait des blagues",
+        gender="male"
     ),
     AIPersonality(
         name="Élise",
         description="Médecin légiste, froide et logique",
         traits=["rationnelle", "détachée", "précise"],
-        speech_style="Parle de manière clinique et factuelle, analyse les comportements"
+        speech_style="Parle de manière clinique et factuelle, analyse les comportements",
+        gender="female"
     ),
     AIPersonality(
         name="Lucas",
         description="Adolescent rebelle, imprévisible",
         traits=["provocateur", "instinctif", "changeant"],
-        speech_style="Parle de manière décontractée avec du slang, provoque les autres"
+        speech_style="Parle de manière décontractée avec du slang, provoque les autres",
+        gender="male"
     ),
     AIPersonality(
         name="Margot",
         description="Libraire mystérieuse, silencieuse mais perspicace",
         traits=["discrète", "observatrice", "énigmatique"],
-        speech_style="Parle peu mais chaque mot compte, fait des remarques cryptiques"
+        speech_style="Parle peu mais chaque mot compte, fait des remarques cryptiques",
+        gender="female"
     ),
     AIPersonality(
         name="Henri",
         description="Maire du village, politique et calculateur",
         traits=["diplomate", "influent", "opportuniste"],
-        speech_style="Parle de manière politique, essaie de rallier les gens à sa cause"
+        speech_style="Parle de manière politique, essaie de rallier les gens à sa cause",
+        gender="male"
     ),
 ]
 
@@ -486,17 +500,35 @@ def format_json(chaine_sale):
         return f"Erreur de formatage : {e}"
 
 def assign_personalities(players: list[Player]) -> dict[str, AIPersonality]:
-    """Assigne des personnalités aux joueurs IA"""
+    """Assigne des personnalités et des voix uniques aux joueurs IA"""
     available = AI_PERSONALITIES.copy()
     random.shuffle(available)
+
+    # Créer des copies des listes de voix disponibles
+    available_male_voices = MALE_VOICES.copy()
+    available_female_voices = FEMALE_VOICES.copy()
+    random.shuffle(available_male_voices)
+    random.shuffle(available_female_voices)
 
     assignments = {}
     for player in players:
         if not player.is_human:
             if available:
                 personality = available.pop()
+
+                # Assigner une voix unique selon le genre
+                if personality.gender == "male" and available_male_voices:
+                    personality.voice_id = available_male_voices.pop()
+                elif personality.gender == "female" and available_female_voices:
+                    personality.voice_id = available_female_voices.pop()
+                else:
+                    # Fallback si on manque de voix (utilise la première voix disponible)
+                    personality.voice_id = MALE_VOICES[0] if personality.gender == "male" else FEMALE_VOICES[0]
+
+                # Assigner les attributs au joueur
                 player.name = personality.name
                 player.personality = personality.description
+                player.voice_id = personality.voice_id
                 assignments[player.name] = personality
 
     return assignments

@@ -4,12 +4,14 @@ Avec agents IA Anthropic Claude
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
 from .game_engine import engine
 from .models import Role
 from .ai_players import set_anthropic_api_key
+from .tts_service import get_tts_service, set_gradium_api_key
 
 app = FastAPI(
     title="Loup-Garou Game API",
@@ -52,6 +54,10 @@ class SendMessageRequest(BaseModel):
     message: str = Field(..., description="Message du joueur humain pendant les discussions")
 
 
+class SetGradiumKeyRequest(BaseModel):
+    api_key: str = Field(..., description="Clé API Gradium pour le TTS")
+
+
 # --- Endpoints ---
 
 @app.get("/")
@@ -65,6 +71,16 @@ async def set_api_key(request: SetApiKeyRequest):
     try:
         set_anthropic_api_key(request.api_key)
         return {"success": True, "message": "Clé API Anthropic configurée"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/v1/config/gradium")
+async def set_gradium_key(request: SetGradiumKeyRequest):
+    """Configure la clé API Gradium pour le TTS"""
+    try:
+        set_gradium_api_key(request.api_key)
+        return {"success": True, "message": "Clé API Gradium configurée"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -178,6 +194,36 @@ async def get_game_summary(game_id: str, player_name: str):
         raise HTTPException(status_code=404, detail=result["error"])
 
     return result
+
+
+@app.get("/api/v1/tts/stream")
+async def tts_stream(text: str, voice_id: str = "YTpq7expH9539ERJ"):
+    """
+    Stream audio TTS pour un texte donné
+    Utilisé uniquement pendant la phase JOUR pour les discussions des IA
+    """
+    if not text or not text.strip():
+        raise HTTPException(status_code=400, detail="Le texte ne peut pas être vide")
+
+    try:
+        tts_service = get_tts_service()
+
+        async def audio_generator():
+            async for chunk in tts_service.text_to_speech_stream(text, voice_id):
+                yield chunk
+
+        return StreamingResponse(
+            audio_generator(),
+            media_type="audio/pcm",
+            headers={
+                "Content-Type": "audio/pcm",
+                "X-Sample-Rate": "48000",
+                "X-Channels": "1",
+                "X-Bit-Depth": "16"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur TTS: {str(e)}")
 
 
 def _generate_intro_message(role: Role) -> str:
