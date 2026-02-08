@@ -225,6 +225,7 @@ C'est la phase de discussion du jour. Tu dois participer à la discussion pour:
 3. Orienter le vote
 
 Génère UNE réplique courte (2-3 phrases) en restant dans ton personnage.
+Ne saute pas forcemment sur la première personne qui parle un peu fort ou qui ose accuser elle a peut être de bonnes raisons de le faire.
 Si il n'y a eu aucune discussion préalable pas besoind'en inventer tu peux commencer la conversation 
 Si ta réponse s'adresse à une personne en particulier que tu as envie de confronter tu mettre son nom dans la case name du json de sortie.
 Autrement laisse la case "name" vide.
@@ -309,6 +310,7 @@ Réponds UNIQUEMENT avec un JSON de cette forme:
                     return {"vote": candidate, "reasoning": "Vote basé sur les discussions"}
                 else : 
                     print("Mauvais format Json !!!!")
+                    print(candidate)
 
             # Fallback
             return {"vote": random.choice(candidates), "reasoning": "Vote aléatoire"}
@@ -440,7 +442,8 @@ Potions disponibles:
 Tu dois décider:
 1. Utiliser la potion de vie pour sauver {wolf_victim}? (si disponible)
 2. Utiliser la potion de mort sur quelqu'un? (cibles: {', '.join(targets)})
-
+Tu n'es pas obligée de l'utiliser directement, tu peux attendre d'avoir à proteger un personne importante, ou toi même.
+N'utilise ta potion de mort qu'en dernier recours quand tu es persuadée que la personne que tu vas tuer est un loup tu ne veux pas risquer de tuer un villageois.
 Réponds UNIQUEMENT avec un JSON:
 {{"save": true/false, "kill": "NomDuJoueur" ou null, "reasoning": "Explication"}}"""
 

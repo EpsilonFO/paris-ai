@@ -104,6 +104,7 @@ class GameState:
     night_actions: NightActions
     history: list[dict]
     pending_action: Optional[str] = None
+    discussions_history: dict[int, list[dict]] = field(default_factory=dict)  # day -> discussions
 
     @classmethod
     def generate_id(cls) -> str:
@@ -166,4 +167,6 @@ class GameState:
             "players": players_data,
             "alive_count": len(self.get_alive_players()),
             "pending_action": self.pending_action,
+            "history": self.history,
+            "discussions_history": {str(k): v for k, v in self.discussions_history.items()},
         }

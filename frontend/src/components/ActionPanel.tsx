@@ -12,6 +12,7 @@ interface ActionPanelProps {
   onWitchSave?: () => void;
   onWitchKill?: () => void;
   isLoading?: boolean;
+  onSendMessage?: (message: string) => void;
 }
 
 export function ActionPanel({
@@ -102,11 +103,6 @@ export function ActionPanel({
         </button>
       </div>
     );
-  }
-
-  // La discussion est maintenant gérée dans DiscussionPanel
-  if (pendingAction === 'human_discussion') {
-    return null;
   }
 
   if (pendingAction === 'wait_night') {
