@@ -1,13 +1,23 @@
-:root {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import "tailwindcss";
+
+/* ── Custom theme ───────────────────────────────── */
+@theme {
+  --color-wood-dark: #1a1510;
+  --color-wood: #2c241b;
+  --color-wood-light: #3d3225;
+  --color-parchment: #d4c5a0;
+  --color-parchment-light: #e8dcc0;
+  --color-ink-brown: #3e2f1c;
+  --color-gold-bright: #d4a745;
+  --color-gold-dark: #8b6914;
+  --color-blood: #8b0000;
+  --color-night-blue: #0f1629;
+  --color-night-surface: #1a1f35;
+  --font-family-display: "Georgia", "Times New Roman", serif;
+  --font-family-serif: "Georgia", "Times New Roman", serif;
 }
 
+/* ── Base styles ────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
@@ -17,22 +27,75 @@ body {
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--color-wood-dark);
+  color: #e8dcc0;
 }
 
 #root {
   min-height: 100vh;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* ── Wood panel background ──────────────────────── */
+.wood-panel {
+  background:
+    linear-gradient(135deg, #1a1510 0%, #2c241b 50%, #1a1510 100%);
 }
 
-a:hover {
-  color: #535bf2;
+/* ── Night overlay ──────────────────────────────── */
+.night-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 15, 40, 0.7) 0%, rgba(15, 22, 41, 0.5) 100%);
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity 0.8s ease;
 }
 
-button {
-  font-family: inherit;
+/* ── Parchment effect ───────────────────────────── */
+.parchment {
+  background: linear-gradient(145deg, #d4c5a0 0%, #c4b48a 50%, #d4c5a0 100%);
+  color: #3e2f1c;
+}
+
+/* ── Ornate frame ───────────────────────────────── */
+.ornate-frame {
+  border: 2px solid #8b6914;
+  box-shadow:
+    inset 0 0 15px rgba(139, 105, 20, 0.15),
+    0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Action glow ────────────────────────────────── */
+.action-glow {
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 8px rgba(212, 167, 69, 0.3); }
+  to   { box-shadow: 0 0 20px rgba(212, 167, 69, 0.6); }
+}
+
+/* ── Scrollbar ──────────────────────────────────── */
+.scroll-container::-webkit-scrollbar { width: 6px; }
+.scroll-container::-webkit-scrollbar-track { background: transparent; }
+.scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(139, 105, 20, 0.4);
+  border-radius: 3px;
+}
+
+/* ── Wolf allies badge ──────────────────────────── */
+.wolf-allies {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(139, 0, 0, 0.9);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  z-index: 100;
+  backdrop-filter: blur(10px);
 }

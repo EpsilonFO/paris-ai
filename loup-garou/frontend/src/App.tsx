@@ -1,350 +1,183 @@
-import { useState, useCallback, useEffect } from 'react';
-import type { GameState, Discussion, CreateGameResponse, ActionResult } from './types';
-import { createGame, getGameState, sendAction, getDiscussions, sendMessage } from './api';
-import { StartScreen } from './components/StartScreen';
-import { GameBoard } from './components/GameBoard';
-import { ActionPanel } from './components/ActionPanel';
-import { EventLog } from './components/EventLog';
-import { GameOver } from './components/GameOver';
-import './App.css';
-
-interface GameEvent {
-  id: number;
-  type: 'death' | 'saved' | 'vote' | 'info';
-  message: string;
-}
+import { useState, useCallback } from 'react';
+import type { CreateGameResponse } from './types';
+import { setAnthropicKey, createGame } from './api';
+import GameInterface from './components/GameInterface';
+import { Loader2, Moon } from 'lucide-react';
+import { cn } from './lib/utils';
 
 function App() {
   const [gameId, setGameId] = useState<string | null>(null);
-  const [gameState, setGameState] = useState<GameState | null>(null);
-  const [yourRole, setYourRole] = useState<string>('');
+  const [yourRole, setYourRole] = useState('');
   const [fellowWolves, setFellowWolves] = useState<string[]>([]);
-  const [discussions, setDiscussions] = useState<Discussion[]>([]);
-  const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
-  const [events, setEvents] = useState<GameEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [gameOver, setGameOver] = useState<{ winner: string } | null>(null);
-  const [witchInfo, setWitchInfo] = useState<{
-    victim?: string;
-    hasLife: boolean;
-    hasDeath: boolean;
-  }>({ hasLife: true, hasDeath: true });
-  const [skipDayVoteExecuted, setSkipDayVoteExecuted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const addEvent = useCallback((type: GameEvent['type'], message: string) => {
-    setEvents((prev) => [...prev, { id: Date.now(), type, message }]);
-  }, []);
+  // ── Start screen state ─────────────────────────────
+  const [apiKey, setApiKey] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const [numPlayers, setNumPlayers] = useState(6);
+  const [numWolves, setNumWolves] = useState(2);
 
-  const handleStartGame = async (playerName: string, numPlayers: number, numWolves: number) => {
+  const handleStartGame = useCallback(async () => {
+    if (!apiKey.trim() || !playerName.trim()) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
     setIsLoading(true);
+    setError(null);
     try {
+      await setAnthropicKey(apiKey);
       const response: CreateGameResponse = await createGame(playerName, numPlayers, numWolves);
       setGameId(response.game_id);
       setYourRole(response.your_role);
       setFellowWolves(response.fellow_wolves || []);
-
-      addEvent('info', response.message);
-
-      if (response.fellow_wolves?.length) {
-        addEvent('info', `Vos allies loups: ${response.fellow_wolves.join(', ')}`);
-      }
-
-      const state = await getGameState(response.game_id);
-      setGameState(state);
-    } catch (error) {
-      console.error('Failed to start game:', error);
-      addEvent('info', 'Erreur: impossible de creer la partie');
+    } catch (err) {
+      console.error('Failed to start game:', err);
+      setError(err instanceof Error ? err.message : 'Impossible de créer la partie');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [apiKey, playerName, numPlayers, numWolves]);
 
-  const handleAction = async () => {
-    if (!gameId || !gameState) return;
-
-    setIsLoading(true);
-    try {
-      let result: ActionResult;
-
-      if (gameState.pending_action === 'wait_night') {
-        result = await sendAction(gameId, 'wait_night');
-      } else if (selectedTarget) {
-        result = await sendAction(gameId, gameState.pending_action!, selectedTarget);
-      } else {
-        return;
-      }
-
-      processActionResult(result);
-      setSelectedTarget(null);
-
-      const newState = await getGameState(gameId);
-      setGameState(newState);
-
-      if (newState.phase === 'jour' && newState.status === 'en_cours') {
-        await loadDiscussions();
-        // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour (human_discussion)
-        const updatedState = await getGameState(gameId);
-        setGameState(updatedState);
-      } else {
-        setDiscussions([]);
-      }
-    } catch (error) {
-      console.error('Action failed:', error);
-      addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action echouee'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleWitchSave = async () => {
-    if (!gameId) return;
-    setIsLoading(true);
-    try {
-      const result = await sendAction(gameId, 'witch_choice', undefined, true);
-      processActionResult(result);
-      setWitchInfo((prev) => ({ ...prev, hasLife: false }));
-
-      const newState = await getGameState(gameId);
-      setGameState(newState);
-
-      if (newState.phase === 'jour') {
-        await loadDiscussions();
-      }
-    } catch (error) {
-      console.error('Witch save failed:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleWitchKill = async () => {
-    if (!gameId || !selectedTarget) return;
-    setIsLoading(true);
-    try {
-      const result = await sendAction(gameId, 'witch_choice', undefined, false, selectedTarget);
-      processActionResult(result);
-      setWitchInfo((prev) => ({ ...prev, hasDeath: false }));
-      setSelectedTarget(null);
-
-      const newState = await getGameState(gameId);
-      setGameState(newState);
-
-      if (newState.phase === 'jour') {
-        await loadDiscussions();
-      }
-    } catch (error) {
-      console.error('Witch kill failed:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleWitchSkip = async () => {
-    if (!gameId) return;
-    setIsLoading(true);
-    try {
-      const result = await sendAction(gameId, 'witch_choice');
-      processActionResult(result);
-
-      const newState = await getGameState(gameId);
-      setGameState(newState);
-
-      if (newState.phase === 'jour') {
-        await loadDiscussions();
-      }
-    } catch (error) {
-      console.error('Witch skip failed:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSendMessage = async (message: string) => {
-    if (!gameId) return;
-    setIsLoading(true);
-    try {
-      const result = await sendMessage(gameId, message);
-
-      if (message) {
-        addEvent('info', `Vous avez dit: "${message}"`);
-      } else {
-        addEvent('info', 'Vous avez passe votre tour');
-      }
-
-      // Afficher les nouvelles discussions des IA
-      if (result.discussions && result.discussions.length > 0) {
-        for (const disc of result.discussions) {
-          await new Promise((resolve) => setTimeout(resolve, 800));
-          setDiscussions((prev) => [...prev, disc]);
-        }
-      }
-
-      // Rafraichir l'etat du jeu
-      const newState = await getGameState(gameId);
-      setGameState(newState);
-    } catch (error) {
-      console.error('Send message failed:', error);
-      addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'envoi echoue'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const processActionResult = (result: ActionResult) => {
-    result.messages.forEach((msg) => addEvent('info', msg));
-
-    if (result.seer_result) {
-      const { target, role, is_wolf } = result.seer_result;
-      addEvent(is_wolf ? 'death' : 'saved', `${target} est ${role}`);
-    }
-
-    if (result.night_events) {
-      result.night_events.deaths.forEach((death) => {
-        addEvent('death', `${death.name} (${death.role}) a ete tue par ${death.cause}`);
-      });
-      if (result.night_events.saved) {
-        addEvent('saved', `${result.night_events.saved} a ete sauve par la sorciere`);
-      }
-    }
-
-    if (result.eliminated) {
-      addEvent('vote', `${result.eliminated.name} (${result.eliminated.role}) elimine avec ${result.eliminated.votes} votes`);
-    }
-
-    if (result.tie) {
-      addEvent('vote', 'Egalite ! Personne n\'est elimine');
-    }
-
-    if (result.game_over) {
-      setGameOver({ winner: result.game_over.winner });
-    }
-  };
-
-  const loadDiscussions = async () => {
-    if (!gameId) return;
-    try {
-      const disc = await getDiscussions(gameId);
-      setDiscussions([]);
-
-      for (let i = 0; i < disc.length; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        setDiscussions((prev) => [...prev, disc[i]]);
-      }
-    } catch (error) {
-      console.error('Failed to load discussions:', error);
-    }
-  };
-
-  const handleRestart = () => {
+  const handleRestart = useCallback(() => {
     setGameId(null);
-    setGameState(null);
     setYourRole('');
     setFellowWolves([]);
-    setDiscussions([]);
-    setSelectedTarget(null);
-    setEvents([]);
-    setGameOver(null);
-    setWitchInfo({ hasLife: true, hasDeath: true });
-    setSkipDayVoteExecuted(false);
-  };
+  }, []);
 
-  useEffect(() => {
-    if (gameState?.phase === 'jour' && gameState.status === 'en_cours' && discussions.length === 0) {
-      loadDiscussions().then(() => {
-        // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour
-        getGameState(gameId!).then(setGameState);
-      });
-    }
-  }, [gameState?.phase]);
-
-  // Réinitialiser le flag skipDayVoteExecuted quand on change de jour
-  useEffect(() => {
-    setSkipDayVoteExecuted(false);
-  }, [gameState?.day_number]);
-
-  // Gérer le cas où le joueur est mort pendant le jour
-  useEffect(() => {
-    const humanPlayer = gameState?.players.find(p => p.is_human);
-    const isPlayerDead = humanPlayer && !humanPlayer.is_alive;
-
-    if (gameState?.phase === 'jour' && gameState.pending_action === 'day_vote' && isPlayerDead && !isLoading && !skipDayVoteExecuted) {
-      // Le joueur est mort mais c'est le moment de voter - faire voter les IA automatiquement
-      setSkipDayVoteExecuted(true);
-      setIsLoading(true);
-      sendAction(gameId!, 'skip_day_vote').then((result) => {
-        processActionResult(result);
-        return getGameState(gameId!);
-      }).then((newState) => {
-        setGameState(newState);
-        // Ne pas charger les discussions - le vote est terminé
-      }).catch((error) => {
-        console.error('Skip day vote failed:', error);
-        addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action échouée'}`);
-        setSkipDayVoteExecuted(false); // Réessayer si erreur
-      }).finally(() => {
-        setIsLoading(false);
-      });
-    }
-  }, [gameState?.phase, gameState?.pending_action, gameState?.day_number, isLoading, skipDayVoteExecuted]);
-
-  if (gameOver) {
-    return <GameOver winner={gameOver.winner} onRestart={handleRestart} />;
-  }
-
-  if (!gameState) {
-    return <StartScreen onStartGame={handleStartGame} isLoading={isLoading} />;
-  }
-
-  const showActionPanel = gameState.pending_action && gameState.status === 'en_cours';
-  const isSelectableMode = ['wolf_vote', 'seer_check', 'day_vote'].includes(gameState.pending_action || '');
-  const isWitchSelectMode = gameState.pending_action === 'witch_choice' && witchInfo.hasDeath;
-
-  return (
-    <div className="app">
-      <GameBoard
-        players={gameState.players}
-        discussions={discussions}
-        phase={gameState.phase}
-        dayNumber={gameState.day_number}
-        selectedPlayer={selectedTarget}
-        selectableMode={isSelectableMode || isWitchSelectMode}
-        onPlayerSelect={setSelectedTarget}
+  // ── Game is running → render GameInterface ─────────
+  if (gameId) {
+    return (
+      <GameInterface
+        gameId={gameId}
+        initialRole={yourRole}
+        fellowWolves={fellowWolves}
+        onRestart={handleRestart}
       />
+    );
+  }
 
-      <EventLog events={events} />
-
-      {showActionPanel && gameState.players.find(p => p.is_human && !p.is_alive) ? (
-        <div className="action-panel spectator-panel">
-          <div className="action-title">⚰️ Vous êtes mort</div>
-          <div className="action-description">
-            {gameState.phase === 'jour' && gameState.pending_action === 'day_vote'
-              ? 'Les autres joueurs votent...'
-              : 'En attente du prochain événement...'}
+  // ── Start screen ───────────────────────────────────
+  return (
+    <div className="min-h-screen wood-panel flex items-center justify-center p-6">
+      <div className="w-full max-w-md">
+        {/* Title */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-800 to-amber-950 flex items-center justify-center border-2 border-gold-bright/50">
+            <Moon className="w-10 h-10 text-gold-bright" />
           </div>
-          <div className="spectator-info">Vous observez le jeu en tant que spectateur</div>
+          <h1 className="font-display text-4xl text-parchment-light tracking-wide">
+            Loup-Garou
+          </h1>
+          <p className="text-amber-100/40 font-serif italic mt-2">
+            Le village s'endort... les loups se réveillent
+          </p>
         </div>
-      ) : showActionPanel ? (
-        <ActionPanel
-          pendingAction={gameState.pending_action}
-          yourRole={yourRole}
-          selectedTarget={selectedTarget}
-          onAction={handleAction}
-          onSkip={handleWitchSkip}
-          wolfVictim={witchInfo.victim}
-          hasLifePotion={witchInfo.hasLife}
-          hasDeathPotion={witchInfo.hasDeath}
-          onWitchSave={handleWitchSave}
-          onWitchKill={handleWitchKill}
-          isLoading={isLoading}
-          onSendMessage={handleSendMessage}
-        />
-      ) : null}
 
-      {fellowWolves.length > 0 && (
-        <div className="wolf-allies">
-          Allies loups: {fellowWolves.join(', ')}
+        {/* Form */}
+        <div className="bg-wood/80 rounded-xl border border-amber-900/30 p-6 space-y-5">
+          {/* API Key */}
+          <div>
+            <label className="block text-xs text-amber-400/70 font-serif mb-1.5">
+              Clé API Anthropic
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="sk-ant-..."
+              className="w-full bg-wood-dark border border-amber-900/30 rounded-lg px-4 py-2.5 text-sm text-amber-100 placeholder:text-amber-700/40 focus:outline-none focus:ring-1 focus:ring-gold-bright/50 transition-colors"
+            />
+          </div>
+
+          {/* Player name */}
+          <div>
+            <label className="block text-xs text-amber-400/70 font-serif mb-1.5">
+              Votre nom
+            </label>
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              placeholder="Entrez votre nom..."
+              className="w-full bg-wood-dark border border-amber-900/30 rounded-lg px-4 py-2.5 text-sm text-amber-100 placeholder:text-amber-700/40 focus:outline-none focus:ring-1 focus:ring-gold-bright/50 transition-colors"
+            />
+          </div>
+
+          {/* Config row */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-xs text-amber-400/70 font-serif mb-1.5">
+                Joueurs
+              </label>
+              <select
+                value={numPlayers}
+                onChange={(e) => setNumPlayers(Number(e.target.value))}
+                className="w-full bg-wood-dark border border-amber-900/30 rounded-lg px-4 py-2.5 text-sm text-amber-100 focus:outline-none focus:ring-1 focus:ring-gold-bright/50"
+              >
+                {[4, 5, 6, 7, 8, 9, 10].map(n => (
+                  <option key={n} value={n}>{n} joueurs</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs text-amber-400/70 font-serif mb-1.5">
+                Loups
+              </label>
+              <select
+                value={numWolves}
+                onChange={(e) => setNumWolves(Number(e.target.value))}
+                className="w-full bg-wood-dark border border-amber-900/30 rounded-lg px-4 py-2.5 text-sm text-amber-100 focus:outline-none focus:ring-1 focus:ring-gold-bright/50"
+              >
+                {[1, 2, 3].map(n => (
+                  <option key={n} value={n}>{n} loup{n > 1 ? 's' : ''}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <p className="text-red-400 text-sm text-center font-serif">{error}</p>
+          )}
+
+          {/* Start button */}
+          <button
+            onClick={handleStartGame}
+            disabled={isLoading}
+            className={cn(
+              "w-full py-3 rounded-lg font-bold text-sm tracking-wide transition-all",
+              isLoading
+                ? "bg-amber-900/40 text-amber-400/50 cursor-wait"
+                : "bg-gradient-to-r from-gold-bright to-gold-dark text-ink-brown hover:shadow-lg hover:shadow-gold-bright/20"
+            )}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Création de la partie...
+              </span>
+            ) : (
+              "Commencer la Partie"
+            )}
+          </button>
         </div>
-      )}
+
+        {/* Roles info */}
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          {[
+            { name: 'Loup-Garou', desc: 'Dévore un villageois chaque nuit', color: 'text-red-400' },
+            { name: 'Villageois', desc: 'Trouve et élimine les loups', color: 'text-amber-400' },
+            { name: 'Voyante', desc: "Découvre le rôle d'un joueur", color: 'text-blue-400' },
+            { name: 'Sorcière', desc: 'Possède 2 potions magiques', color: 'text-purple-400' },
+          ].map(role => (
+            <div key={role.name} className="bg-black/20 rounded-lg border border-amber-900/20 p-3">
+              <span className={cn("text-xs font-bold", role.color)}>{role.name}</span>
+              <p className="text-[10px] text-amber-100/40 mt-0.5">{role.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
