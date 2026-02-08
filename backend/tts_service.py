@@ -50,7 +50,7 @@ class TTSService:
                     "model_name": "default",
                     "voice_id": voice_id,
                     "output_format": "pcm",
-                    "speped": 2.0
+                    'json_config':{'padding_bonus':-3}
                 },
                 text=text
             )
