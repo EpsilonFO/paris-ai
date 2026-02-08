@@ -64,7 +64,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour' && newState.status === 'en_cours') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
         // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour (human_discussion)
         const updatedState = await getGameState(gameId);
         setGameState(updatedState);
@@ -90,7 +90,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
       }
     } catch (error) {
       console.error('Witch save failed:', error);
@@ -112,7 +112,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
       }
     } catch (error) {
       console.error('Witch kill failed:', error);
@@ -132,7 +132,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
       }
     } catch (error) {
       console.error('Witch skip failed:', error);
@@ -195,8 +195,13 @@ function App() {
     }
   };
 
-  const loadDiscussions = async () => {
-    if (!gameId || !gameState) return;
+  const loadDiscussions = async (currentGameState?: GameState) => {
+    if (!gameId) return;
+
+    // Utiliser l'état fourni en paramètre ou l'état actuel
+    const stateToUse = currentGameState || gameState;
+    if (!stateToUse) return;
+
     try {
       const disc = await getDiscussions(gameId);
       setDiscussions([]);
@@ -208,10 +213,10 @@ function App() {
         setDiscussions((prev) => [...prev, disc[i]]);
 
         // Jouer le TTS uniquement pour les messages des IA pendant la phase JOUR
-        if (gameState.phase === 'jour') {
+        if (stateToUse.phase === 'jour') {
           try {
             // Trouver le voice_id du joueur qui parle
-            const speaker = gameState.players.find(p => p.name === disc[i].player);
+            const speaker = stateToUse.players.find(p => p.name === disc[i].player);
             const voiceId = speaker?.voice_id || 'YTpq7expH9539ERJ'; // Voix par défaut
             await ttsService.playText(disc[i].message, voiceId);
           } catch (error) {
@@ -239,7 +244,7 @@ function App() {
 
   useEffect(() => {
     if (gameState?.phase === 'jour' && gameState.status === 'en_cours' && discussions.length === 0) {
-      loadDiscussions().then(() => {
+      loadDiscussions(gameState).then(() => {
         // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour
         getGameState(gameId!).then(setGameState);
       });

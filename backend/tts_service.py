@@ -49,7 +49,8 @@ class TTSService:
                 setup={
                     "model_name": "default",
                     "voice_id": voice_id,
-                    "output_format": "pcm"
+                    "output_format": "pcm",
+                    "speped": 2.0
                 },
                 text=text
             )
