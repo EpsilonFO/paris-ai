@@ -45,11 +45,11 @@ export function PlayerCard({
         {/* Role indicator */}
         {player.role && (
           <div className="role-badge">
-            {player.role === 'Loup-Garou' && '🐺'}
-            {player.role === 'Voyante' && '👁️'}
-            {player.role === 'Sorcière' && '🧙'}
-            {player.role === 'Chasseur' && '🏹'}
-            {player.role === 'Villageois' && '👨'}
+            {player.role === 'wAIr-wolf' && '🐺'}
+            {player.role === 'Seer' && '👁️'}
+            {player.role === 'Witch' && '🧙'}
+            {player.role === 'Hunter' && '🏹'}
+            {player.role === 'Villager' && '👨'}
           </div>
         )}
 
@@ -65,7 +65,7 @@ export function PlayerCard({
         {/* Vote button */}
         {canVote && showVote && (
           <button className="vote-button" onClick={onVote}>
-            Voter
+            Vote
           </button>
         )}
       </div>

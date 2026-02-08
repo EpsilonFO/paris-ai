@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 import anthropic
 import re
+from dotenv import load_dotenv
+load_dotenv()
 
 from .models import Player, Role, GameState, Phase
 

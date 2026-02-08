@@ -7,13 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from typing import Optional
-
+import os
+from dotenv import load_dotenv
 from .game_engine import engine
 from .models import Role
 from .ai_players import set_anthropic_api_key
 from .tts_services import get_tts_service, set_gradium_api_key
 
-
+load_dotenv()
 app = FastAPI(
     title="Werewolf Game API",
     description="API to play Werewolf with Anthropic Claude AI agents",
@@ -67,7 +68,7 @@ async def root():
 async def set_api_key(request: SetApiKeyRequest):
     """Configure Anthropic API key"""
     try:
-        set_anthropic_api_key(request.api_key)
+        set_anthropic_api_key(os.getenv("ANTHROPIC_API_KEY"))
         return {"success": True, "message": "Anthropic API key configured"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

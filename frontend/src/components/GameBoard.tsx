@@ -64,7 +64,7 @@ export function GameBoard({
 
       <div className="phase-indicator">
         <h2>
-          {isNight ? '🌙 Nuit' : '☀️ Jour'} {dayNumber}
+          {isNight ? '🌙 Night' : '☀️ Day'} {dayNumber}
         </h2>
       </div>
 

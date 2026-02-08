@@ -756,7 +756,19 @@ class GameEngine:
         # Initialiser l'ordre de passage si ce n'est pas déjà fait
         if game_id not in self.discussion_state or self.discussion_state[game_id].get("completed", False):
             alive_players = game.get_alive_players()
-            random.shuffle(alive_players)  # Ordre aléatoire
+
+            # Find and remove the human player
+            human_player = next((p for p in alive_players if p.is_human), None)
+            if human_player:
+                alive_players.remove(human_player)
+
+            # Shuffle the AI players
+            random.shuffle(alive_players)
+
+            # Put human player first
+            if human_player:
+                alive_players.insert(0, human_player)
+
             self.discussion_state[game_id] = {
                 "order": [p.name for p in alive_players],
                 "current_index": 0,
