@@ -113,8 +113,13 @@ class GameEngine:
     def _get_pending_action(self, players: list[Player], phase: Phase, human_role: Role) -> Optional[str]:
         """Détermine l'action en attente pour le joueur humain"""
         human = next((p for p in players if p.is_human), None)
+
+        # Si le joueur est mort, automatiser les actions
         if not human or not human.is_alive:
-            return None
+            if phase == Phase.NUIT:
+                return "auto_night"  # Automatiser la nuit
+            else:
+                return "auto_day"  # Automatiser le jour
 
         if phase == Phase.NUIT:
             if human_role == Role.LOUP_GAROU:
@@ -143,8 +148,9 @@ class GameEngine:
 
         human = next((p for p in game.players if p.is_human), None)
 
-        # Permettre l'action "skip_day_vote" même si le joueur est mort
-        if not human or (not human.is_alive and action.get("action") != "skip_day_vote"):
+        # Permettre les actions automatiques même si le joueur est mort
+        auto_actions = {"skip_day_vote", "auto_night", "auto_day"}
+        if not human or (not human.is_alive and action.get("action") not in auto_actions):
             return {"error": "Vous êtes mort"}
 
         if game.phase == Phase.NUIT:
@@ -162,6 +168,37 @@ class GameEngine:
         """Traite une action nocturne"""
         action_type = action.get("action")
         result = {"success": True, "messages": [], "wolf_discussions": []}
+
+        # Automatiser la nuit si le joueur est mort
+        if action_type == "auto_night":
+            result["messages"].append("Le joueur est mort. Les IA agissent automatiquement...")
+            # Les IA exécutent leurs actions
+            await self._execute_ai_night_actions_async(game)
+            night_result = self._resolve_night(game)
+            result["night_events"] = night_result
+
+            # Mettre à jour la mémoire des agents avec les morts
+            for death in night_result.get("deaths", []):
+                for agent in self.ai_agents.get(game.game_id, {}).values():
+                    agent.update_memory("death", death)
+
+            # Vérifier la victoire
+            victory = game.check_victory()
+            if victory:
+                game.status = victory
+                result["game_over"] = {
+                    "winner": "Village" if victory == GameStatus.VICTOIRE_VILLAGE else "Loups-Garous",
+                    "status": victory.value
+                }
+            else:
+                # Passer au jour
+                game.phase = Phase.JOUR
+                game.pending_action = "auto_day"
+                # Sauvegarder et réinitialiser le cache des discussions
+                self._save_discussions_history(game)
+                self.discussions_cache[game.game_id] = []
+
+            return result
 
         if human.role == Role.LOUP_GAROU and action_type == "wolf_vote":
             target_name = action.get("target")
@@ -214,6 +251,21 @@ class GameEngine:
 
         # Exécuter les actions IA et résoudre la nuit
         await self._execute_ai_night_actions_async(game)
+
+        # Si la Sorcière est humaine et n'a pas encore choisi, l'arrêter ici et lui montrer la victime
+        witch = next((p for p in game.players if p.role == Role.SORCIERE and p.is_alive and p.is_human), None)
+        if witch and action_type != "witch_choice":
+            # Afficher qui s'est fait manger
+            if game.night_actions.wolf_victim:
+                victim = game.get_player(game.night_actions.wolf_victim)
+                if victim:
+                    result["messages"].append(f"\n⚠️ {game.night_actions.wolf_victim} s'est fait attaquer par les loups!")
+                    result["witch_victim"] = game.night_actions.wolf_victim
+
+            # Mettre l'action en attente pour la Sorcière
+            game.pending_action = "witch_choice"
+            return result
+
         night_result = self._resolve_night(game)
         result["night_events"] = night_result
 
@@ -236,9 +288,9 @@ class GameEngine:
             # Toujours mettre pending_action à day_vote (mort ou vivant)
             # Le frontend déterminera si le joueur peut voter ou doit passer son tour
             game.pending_action = "day_vote"
-            # Réinitialiser le cache des discussions
+            # Sauvegarder et réinitialiser le cache des discussions
+            self._save_discussions_history(game)
             self.discussions_cache[game.game_id] = []
-
         return result
 
     async def _generate_wolf_discussions(self, game: GameState, human_target: str) -> list[dict]:
@@ -270,7 +322,7 @@ class GameEngine:
         return discussions
 
     async def _execute_ai_night_actions_async(self, game: GameState):
-        """Exécute les actions nocturnes des IA"""
+        """Exécute les actions nocturnes des IA (loups et voyante seulement)"""
         agents = self.ai_agents.get(game.game_id, {})
 
         # Actions des loups IA (si pas déjà votée par humain loup)
@@ -278,18 +330,21 @@ class GameEngine:
             wolf_votes = []
             for player in game.get_wolves():
                 if not player.is_human and player.is_alive:
+                    print("%"*100)
                     agent = agents.get(player.name)
                     if agent:
+                        print("&"*100)
                         fellow_wolves = [p.name for p in game.get_wolves() if p.name != player.name]
                         vote_result = await agent.generate_wolf_vote(fellow_wolves)
                         if vote_result.get("target"):
                             wolf_votes.append(vote_result["target"])
+                            print("0"*100)
 
             if wolf_votes:
                 vote_count = Counter(wolf_votes)
                 game.night_actions.wolf_victim = vote_count.most_common(1)[0][0]
 
-        # Action de la voyante IA
+        # Action de la voyante IA (seulement si pas humain)
         seer = next((p for p in game.players if p.role == Role.VOYANTE and p.is_alive and not p.is_human), None)
         if seer and not game.night_actions.seer_target:
             agent = agents.get(seer.name)
@@ -303,7 +358,7 @@ class GameEngine:
                     # L'agent mémorise le rôle découvert
                     agent.update_memory("role_revealed", {"player": target.name, "role": target.role.display_name})
 
-        # Action de la sorcière IA
+        # Action de la sorcière IA (seulement si pas humain ET pas de sorcière humaine)
         witch = next((p for p in game.players if p.role == Role.SORCIERE and p.is_alive and not p.is_human), None)
         if witch:
             agent = agents.get(witch.name)
@@ -338,6 +393,12 @@ class GameEngine:
                         "role": victim.role.display_name,
                         "cause": "loups"
                     })
+                    # Ajouter à l'historique texte
+                    game.history.append({
+                        "type": "death",
+                        "day": game.day_number,
+                        "message": f"{victim_name} a été tué et était {victim.role.display_name}"
+                    })
 
         # Victime de la sorcière
         witch_kill = game.night_actions.witch_kill
@@ -349,6 +410,12 @@ class GameEngine:
                     "name": witch_kill,
                     "role": target.role.display_name,
                     "cause": "sorcière"
+                })
+                # Ajouter à l'historique texte
+                game.history.append({
+                    "type": "death",
+                    "day": game.day_number,
+                    "message": f"{witch_kill} a été tué et était {target.role.display_name}"
                 })
 
         # Log dans l'historique
@@ -363,15 +430,107 @@ class GameEngine:
 
         return events
 
+    def _save_discussions_history(self, game: GameState):
+        """Sauvegarde les discussions du jour courant dans l'historique"""
+        discussions = self.discussions_cache.get(game.game_id, [])
+        if discussions:
+            game.discussions_history[game.day_number] = discussions
+
     async def _process_day_action_async(self, game: GameState, human: Player, action: dict) -> dict:
         """Traite une action de jour"""
         action_type = action.get("action")
         result = {"success": True, "messages": []}
 
-        if action_type == "skip_day_vote":
-            # Le joueur humain est mort, les IA votent seules
+        # Automatiser le jour si le joueur est mort
+        if action_type == "auto_day":
+            result["messages"].append("Le joueur est mort. Les IA votent automatiquement...")
             votes = {}
-        elif action_type == "day_vote":
+
+            # Récupérer les discussions pour contexte
+            discussions = self.discussions_cache.get(game.game_id, [])
+
+            # Générer les votes IA
+            agents = self.ai_agents.get(game.game_id, {})
+            for player in game.get_alive_players():
+                if not player.is_human:
+                    agent = agents.get(player.name)
+                    if agent:
+                        vote_result = await agent.generate_vote(discussions)
+                        if vote_result.get("vote"):
+                            votes[player.name] = vote_result["vote"]
+                            # Mettre à jour la mémoire
+                            agent.update_memory("vote", {"voter": player.name, "target": vote_result["vote"]})
+
+            # Compter les votes
+            vote_counts = Counter(votes.values())
+            result["votes"] = dict(votes)
+            result["vote_counts"] = dict(vote_counts)
+
+            # Déterminer le résultat
+            if vote_counts:
+                max_votes = max(vote_counts.values())
+                top_voted = [name for name, count in vote_counts.items() if count == max_votes]
+
+                if len(top_voted) == 1:
+                    eliminated_name = top_voted[0]
+                    eliminated = game.get_player(eliminated_name)
+                    if eliminated:
+                        eliminated.is_alive = False
+                        result["eliminated"] = {
+                            "name": eliminated_name,
+                            "role": eliminated.role.display_name,
+                            "votes": max_votes
+                        }
+                        result["messages"].append(
+                            f"{eliminated_name} a été éliminé avec {max_votes} votes. "
+                            f"C'était un(e) {eliminated.role.display_name}."
+                        )
+                        # Mettre à jour la mémoire des agents
+                        for agent in agents.values():
+                            agent.update_memory("death", {
+                                "name": eliminated_name,
+                                "role": eliminated.role.display_name,
+                                "cause": "vote"
+                            })
+                        # Ajouter à l'historique texte
+                        game.history.append({
+                            "type": "death",
+                            "day": game.day_number,
+                            "message": f"{eliminated_name} a été éliminé et était {eliminated.role.display_name}"
+                        })
+                else:
+                    result["tie"] = True
+                    result["messages"].append(
+                        f"Égalité entre {', '.join(top_voted)}. Personne n'est éliminé."
+                    )
+
+            # Log
+            game.history.append({
+                "type": "day_vote",
+                "day": game.day_number,
+                "votes": votes,
+                "result": result.get("eliminated") or {"tie": True}
+            })
+
+            # Vérifier la victoire
+            victory = game.check_victory()
+            if victory:
+                game.status = victory
+                result["game_over"] = {
+                    "winner": "Village" if victory == GameStatus.VICTOIRE_VILLAGE else "Loups-Garous",
+                    "status": victory.value
+                }
+            else:
+                # Sauvegarder les discussions avant de passer à la nuit suivante
+                self._save_discussions_history(game)
+                # Passer à la nuit suivante
+                game.day_number += 1
+                game.phase = Phase.NUIT
+                game.pending_action = "auto_night"
+
+            return result
+
+        elif action_type == "day_vote" or action_type == "skip_day_vote":
             target_name = action.get("target")
 
             # Collecter les votes
@@ -423,6 +582,12 @@ class GameEngine:
                                 "role": eliminated.role.display_name,
                                 "cause": "vote"
                             })
+                        # Ajouter à l'historique texte
+                        game.history.append({
+                            "type": "death",
+                            "day": game.day_number,
+                            "message": f"{eliminated_name} a été éliminé et était {eliminated.role.display_name}"
+                        })
                 else:
                     result["tie"] = True
                     result["messages"].append(
@@ -446,6 +611,8 @@ class GameEngine:
                     "status": victory.value
                 }
             else:
+                # Sauvegarder les discussions avant de passer à la nuit suivante
+                self._save_discussions_history(game)
                 # Passer à la nuit suivante
                 game.day_number += 1
                 game.phase = Phase.NUIT
@@ -455,7 +622,8 @@ class GameEngine:
                         game.players, Phase.NUIT, human_player.role
                     )
                 else:
-                    game.pending_action = None
+                    # Le joueur est mort, automatiser la nuit
+                    game.pending_action = "auto_night"
 
         return result
 
