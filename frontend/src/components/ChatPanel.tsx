@@ -1,5 +1,5 @@
 import { Send } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Discussion } from '../types';
 import './ChatPanel.css';
 
@@ -17,6 +17,13 @@ export function ChatPanel({
   onSendMessage,
 }: ChatPanelProps) {
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (discussions.length > 0) {
+      const lastDiscussion = discussions[discussions.length - 1];
+      console.log(`[FRONTEND_DISPLAY] NEW MESSAGE DISPLAYED - ${lastDiscussion.player}: ${lastDiscussion.message.substring(0, 80)}...`);
+    }
+  }, [discussions]);
 
   const handleSend = () => {
     if (message.trim()) {
@@ -37,24 +44,27 @@ export function ChatPanel({
   return (
     <div className="chat-panel">
       <div className="chat-header">
-        <h3 className="chat-title">⚜️ La Chronique ⚜️</h3>
+        <h3 className="chat-title">⚜️ The Chronicle ⚜️</h3>
       </div>
 
       <div className="chat-messages">
         {discussions.length === 0 ? (
           <div className="chat-empty">
-            En attente de discussions...
+            Waiting for discussions...
           </div>
         ) : (
-          discussions.map((discussion, index) => (
-            <div
-              key={index}
-              className={`chat-message ${discussion.player === humanPlayerName ? 'human' : 'ai'}`}
-            >
-              <div className="message-player">{discussion.player}</div>
-              <div className="message-text">{discussion.message}</div>
-            </div>
-          ))
+          discussions.map((discussion, index) => {
+            console.log(`[FRONTEND_RENDER] Rendering message #${index} - ${discussion.player}`);
+            return (
+              <div
+                key={index}
+                className={`chat-message ${discussion.player === humanPlayerName ? 'human' : 'ai'}`}
+              >
+                <div className="message-player">{discussion.player}</div>
+                <div className="message-text">{discussion.message}</div>
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -63,7 +73,7 @@ export function ChatPanel({
           <div className="chat-input-wrapper">
             <textarea
               className="chat-input"
-              placeholder="Parlez au village..."
+              placeholder="Speak to the village..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyPress={handleKeyPress}

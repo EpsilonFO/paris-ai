@@ -15,12 +15,12 @@ from .tts_services import get_tts_service, set_gradium_api_key
 
 
 app = FastAPI(
-    title="Loup-Garou Game API",
-    description="API pour jouer au Loup-Garou avec des agents IA Anthropic Claude",
+    title="Werewolf Game API",
+    description="API to play Werewolf with Anthropic Claude AI agents",
     version="2.0.0"
 )
 
-# CORS pour permettre les appels depuis le frontend
+# CORS to allow calls from frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,59 +30,59 @@ app.add_middleware(
 )
 
 
-# --- Modèles Pydantic ---
+# --- Pydantic Models ---
 
 class SetApiKeyRequest(BaseModel):
-    api_key: str = Field(..., description="Clé API Anthropic")
+    api_key: str = Field(..., description="Anthropic API key")
 
 
 class CreateGameRequest(BaseModel):
-    player_name: str = Field(..., description="Nom du joueur humain")
-    num_players: int = Field(default=6, ge=4, le=10, description="Nombre total de joueurs")
-    num_wolves: int = Field(default=2, ge=1, le=3, description="Nombre de loups-garous")
-    include_seer: bool = Field(default=True, description="Inclure la Voyante")
-    include_witch: bool = Field(default=True, description="Inclure la Sorcière")
+    player_name: str = Field(..., description="Human player name")
+    num_players: int = Field(default=6, ge=4, le=10, description="Total number of players")
+    num_wolves: int = Field(default=2, ge=1, le=3, description="Number of werewolves")
+    include_seer: bool = Field(default=True, description="Include the Seer")
+    include_witch: bool = Field(default=True, description="Include the Witch")
 
 
 class PlayerActionRequest(BaseModel):
-    action: str = Field(..., description="Type d'action")
-    target: Optional[str] = Field(default=None, description="Cible de l'action")
-    save: Optional[bool] = Field(default=False, description="Sauver la victime (Sorcière)")
-    kill: Optional[str] = Field(default=None, description="Tuer un joueur (Sorcière)")
+    action: str = Field(..., description="Action type")
+    target: Optional[str] = Field(default=None, description="Action target")
+    save: Optional[bool] = Field(default=False, description="Save the victim (Witch)")
+    kill: Optional[str] = Field(default=None, description="Kill a player (Witch)")
 
 
 class SendMessageRequest(BaseModel):
-    message: str = Field(..., description="Message du joueur humain pendant les discussions")
+    message: str = Field(..., description="Human player message during discussions")
 
 class SetGradiumKeyRequest(BaseModel):
-    api_key: str = Field(..., description="Clé API Gradium pour le TTS")
+    api_key: str = Field(..., description="Gradium API key for TTS")
 # --- Endpoints ---
 
 @app.get("/")
 async def root():
-    return {"message": "Bienvenue dans l'API Loup-Garou", "version": "2.0.0"}
+    return {"message": "Welcome to the Werewolf API", "version": "2.0.0"}
 
 
 @app.post("/api/v1/config/anthropic")
 async def set_api_key(request: SetApiKeyRequest):
-    """Configure la clé API Anthropic"""
+    """Configure Anthropic API key"""
     try:
         set_anthropic_api_key(request.api_key)
-        return {"success": True, "message": "Clé API Anthropic configurée"}
+        return {"success": True, "message": "Anthropic API key configured"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/v1/config/gradium")
 async def set_gradium_key(request: SetGradiumKeyRequest):
-    """Configure la clé API Gradium pour le TTS"""
+    """Configure Gradium API key for TTS"""
     try:
         set_gradium_api_key(request.api_key)
-        return {"success": True, "message": "Clé API Gradium configurée"}
+        return {"success": True, "message": "Gradium API key configured"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 @app.post("/api/v1/games")
 async def create_game(request: CreateGameRequest):
-    """Crée une nouvelle partie de Loup-Garou"""
+    """Create a new Werewolf game"""
     game = engine.create_game(
         human_name=request.player_name,
         num_players=request.num_players,
@@ -118,10 +118,10 @@ async def create_game(request: CreateGameRequest):
 
 @app.get("/api/v1/games/{game_id}")
 async def get_game_state(game_id: str):
-    """Récupère l'état actuel de la partie"""
+    """Get current game state"""
     game = engine.get_game(game_id)
     if not game:
-        raise HTTPException(status_code=404, detail="Partie non trouvée")
+        raise HTTPException(status_code=404, detail="Game not found")
 
     human_player = next((p for p in game.players if p.is_human), None)
     player_name = human_player.name if human_player else None
@@ -131,10 +131,10 @@ async def get_game_state(game_id: str):
 
 @app.post("/api/v1/games/{game_id}/actions")
 async def process_action(game_id: str, request: PlayerActionRequest):
-    """Traite une action du joueur humain"""
+    """Process human player action"""
     game = engine.get_game(game_id)
     if not game:
-        raise HTTPException(status_code=404, detail="Partie non trouvée")
+        raise HTTPException(status_code=404, detail="Game not found")
 
     action = {
         "action": request.action,
@@ -143,7 +143,7 @@ async def process_action(game_id: str, request: PlayerActionRequest):
         "kill": request.kill
     }
 
-    # Utiliser la version async
+    # Use async version
     result = await engine.process_human_action_async(game_id, action)
 
     if "error" in result:
@@ -154,15 +154,15 @@ async def process_action(game_id: str, request: PlayerActionRequest):
 
 @app.get("/api/v1/games/{game_id}/discussions")
 async def get_discussions(game_id: str):
-    """Récupère les discussions du cache (ou génère les discussions initiales si vide)"""
+    """Get discussions from cache (or generate initial discussions if empty)"""
     game = engine.get_game(game_id)
     if not game:
-        raise HTTPException(status_code=404, detail="Partie non trouvée")
+        raise HTTPException(status_code=404, detail="Game not found")
 
-    # Récupérer les discussions du cache
+    # Get discussions from cache
     discussions = engine.get_cached_discussions(game_id)
 
-    # Si le cache est vide et on est en phase jour, générer les discussions initiales
+    # If cache is empty and in day phase, generate initial discussions
     if not discussions and game.phase.value == 'jour':
         discussions = await engine.generate_ai_discussion_async(game_id)
 
@@ -171,12 +171,12 @@ async def get_discussions(game_id: str):
 
 @app.post("/api/v1/games/{game_id}/message")
 async def send_message(game_id: str, request: SendMessageRequest):
-    """Envoie un message du joueur humain pendant les discussions"""
+    """Send human player message during discussions"""
     game = engine.get_game(game_id)
     if not game:
-        raise HTTPException(status_code=404, detail="Partie non trouvée")
+        raise HTTPException(status_code=404, detail="Game not found")
 
-    # Utiliser la version async
+    # Use async version
     result = await engine.send_human_message_async(game_id, request.message)
 
     if "error" in result:
@@ -187,7 +187,7 @@ async def send_message(game_id: str, request: SendMessageRequest):
 
 @app.get("/api/v1/games/{game_id}/summary")
 async def get_game_summary(game_id: str, player_name: str):
-    """Récupère un résumé du jeu pour un joueur"""
+    """Get game summary for a player"""
     result = engine.get_game_summary(game_id, player_name)
 
     if "error" in result:
@@ -198,21 +198,25 @@ async def get_game_summary(game_id: str, player_name: str):
 @app.get("/api/v1/tts/stream")
 async def tts_stream(text: str, voice_id: str = "YTpq7expH9539ERJ"):
     """
-    Stream audio TTS pour un texte donné
-    Utilisé uniquement pendant la phase JOUR pour les discussions des IA
+    Stream audio TTS for given text
+    Only used during DAY phase for AI discussions
     """
     if not text or not text.strip():
-        raise HTTPException(status_code=400, detail="Le texte ne peut pas être vide")
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+
+    print(f"[API_TTS] TTS request received for: {text[:100]}..." if len(text) > 100 else f"[API_TTS] TTS request received for: {text}")
 
     tts_service = get_tts_service()
 
     if not tts_service:
-        raise HTTPException(status_code=503, detail="Service TTS non disponible")
+        raise HTTPException(status_code=503, detail="TTS service unavailable")
 
     try:
         async def audio_generator():
+            print(f"[API_TTS] Audio streaming started...")
             async for chunk in tts_service.text_to_speech_stream(text, voice_id):
                 yield chunk
+            print(f"[API_TTS] Audio streaming completed")
 
         return StreamingResponse(
             audio_generator(),
@@ -225,36 +229,38 @@ async def tts_stream(text: str, voice_id: str = "YTpq7expH9539ERJ"):
             }
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur TTS: {str(e)}")
+        print(f"[API_TTS] ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"TTS error: {str(e)}")
+
 def _generate_intro_message(role: Role) -> str:
-    """Génère le message d'introduction selon le rôle"""
+    """Generate introduction message based on role"""
     messages = {
         Role.VILLAGEOIS: (
-            "Vous êtes un simple Villageois. Vous n'avez pas de pouvoir spécial, "
-            "mais votre vote est crucial pour démasquer les loups. "
-            "Observez attentivement les comportements suspects !"
+            "You are a simple Villager. You have no special power, "
+            "but your vote is crucial to unmask the werewolves. "
+            "Observe suspicious behaviors carefully!"
         ),
         Role.LOUP_GAROU: (
-            "Vous êtes un Loup-Garou ! Chaque nuit, vous choisirez une victime "
-            "avec vos complices. Le jour, fondez-vous parmi les villageois "
-            "et détournez les soupçons. La survie de la meute dépend de vous."
+            "You are a Werewolf! Each night, you will choose a victim "
+            "with your accomplices. During the day, blend in with the villagers "
+            "and divert suspicion. The pack's survival depends on you."
         ),
         Role.VOYANTE: (
-            "Vous êtes la Voyante. Chaque nuit, vous pouvez découvrir "
-            "le véritable rôle d'un joueur. Utilisez ce pouvoir avec sagesse "
-            "pour guider le village vers la victoire."
+            "You are the Seer. Each night, you can discover "
+            "the true role of a player. Use this power wisely "
+            "to guide the village to victory."
         ),
         Role.SORCIERE: (
-            "Vous êtes la Sorcière. Vous possédez deux potions : "
-            "une de vie pour sauver la victime des loups, "
-            "une de mort pour éliminer un suspect. "
-            "Chaque potion ne peut être utilisée qu'une seule fois."
+            "You are the Witch. You possess two potions: "
+            "one of life to save the werewolves' victim, "
+            "one of death to eliminate a suspect. "
+            "Each potion can only be used once."
         ),
     }
-    return messages.get(role, "Bienvenue dans la partie !")
+    return messages.get(role, "Welcome to the game!")
 
 
-# Pour exécuter avec uvicorn
+# To run with uvicorn
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -798,7 +798,7 @@ class GameEngine:
                 }
                 discussions.append(discussion)
                 existing_discussions.append(discussion)
-                print(f"{current_player_name} : {message_texte}")
+                print(f"[MESSAGE_DISPLAY] AI MESSAGE (day {game.day_number}) - {current_player_name}: {message_texte}")
 
                 # Si l'IA cible quelqu'un, gérer la réponse
                 if nom_agent_2:
@@ -806,7 +806,8 @@ class GameEngine:
                     print("="*100)
                     print(message)
                     print("="*100)
-                    if game.get_player(nom_agent_2).is_human :
+                    target_check = game.get_player(nom_agent_2)
+                    if target_check and target_check.is_human :
                         game.pending_action = "human_discussion"
                         print(f"C'est au tour de {nom_agent_2} de parler")
                         break
@@ -827,7 +828,7 @@ class GameEngine:
                                     }
                                     discussions.append(discussion_2)
                                     existing_discussions.append(discussion_2)
-                                    print(f"Réponse de {nom_agent_2} à {current_player_name} : {message_texte_2}")
+                                    print(f"[MESSAGE_DISPLAY] AI REPLY (day {game.day_number}) - {nom_agent_2} replies to {current_player_name}: {message_texte_2}")
 
             state["current_index"] += 1
 
@@ -878,7 +879,7 @@ class GameEngine:
         }
         existing_discussions.append(discussion)
         self.discussions_cache[game_id] = existing_discussions
-        print(f"{human.name} (humain) : {message}")
+        print(f"[MESSAGE_DISPLAY] HUMAN MESSAGE (day {game.day_number}) - {human.name}: {message}")
 
         # Passer au joueur suivant dans l'ordre
         state = self.discussion_state.get(game_id)

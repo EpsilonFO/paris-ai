@@ -163,7 +163,8 @@ function App() {
         const ttsService = getTTSService();
 
         for (const disc of result.discussions) {
-          // Ajouter le message et attendre avant de continuer
+          // Add message and wait before continuing
+          console.log(`[FRONTEND_SEND] New discussion after human message - ${disc.player}: ${disc.message.substring(0, 80)}...`);
           setDiscussions((prev) => [...prev, disc]);
 
           // Jouer le TTS uniquement pour les messages des IA pendant la phase JOUR
@@ -217,7 +218,8 @@ function App() {
       const ttsService = getTTSService();
 
       for (let i = 0; i < disc.length; i++) {
-        // Ajouter le message et attendre avant de continuer
+        // Add message and wait before continuing
+        console.log(`[FRONTEND_LOAD] Loading discussion #${i} - ${disc[i].player}: ${disc[i].message.substring(0, 80)}...`);
         setDiscussions((prev) => [...prev, disc[i]]);
 
         // Jouer le TTS uniquement pour les messages des IA pendant la phase JOUR
@@ -257,13 +259,15 @@ function App() {
 
   useEffect(() => {
     if (gameId && gameState?.phase === 'jour' && gameState.status === 'en_cours') {
-      // Réinitialiser les discussions au début de la phase JOUR (au lieu de vérifier si vide)
-      loadDiscussions(gameState).then(() => {
-        // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour
-        getGameState(gameId).then(setGameState);
-      });
+      // Ne charger les discussions que si elles sont vides (éviter les appels doubles)
+      if (discussions.length === 0) {
+        loadDiscussions(gameState).then(() => {
+          // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour
+          getGameState(gameId).then(setGameState);
+        });
+      }
     }
-  }, [gameState?.phase, gameState?.day_number, gameId]);
+  }, [gameState?.phase, gameState?.day_number, gameId, discussions.length]);
 
   // Réinitialiser le flag skipDayVoteExecuted quand on change de jour
   useEffect(() => {
@@ -351,7 +355,7 @@ function App() {
 
       {/* Header */}
       <header className="app-header">
-        <h1 className="app-title">Loup-Garou</h1>
+        <h1 className="app-title">Werewolf</h1>
         <PhaseIndicator phase={gameState.phase} dayNumber={gameState.day_number} />
       </header>
 
@@ -361,10 +365,10 @@ function App() {
         <main className="village-display">
           <div className="village-section">
             <h2 className="village-title">
-              <span>⚜</span> Le Village <span>⚜</span>
+              <span>⚜</span> The Village <span>⚜</span>
             </h2>
             <p className="village-count">
-              {gameState.players.filter(p => p.is_alive).length} villageois en vie
+              {gameState.players.filter(p => p.is_alive).length} villagers alive
             </p>
           </div>
 
@@ -391,22 +395,22 @@ function App() {
             <div className="action-hint">
               <div className="action-hint-content">
                 {gameState.pending_action === 'day_vote' && (
-                  <span>🗳️ Choisissez qui éliminer...</span>
+                  <span>🗳️ Choose who to eliminate...</span>
                 )}
                 {gameState.pending_action === 'human_discussion' && (
-                  <span>💬 C'est à vous de parler dans la Chronique</span>
+                  <span>💬 It's your turn to speak in the Chronicle</span>
                 )}
                 {gameState.pending_action === 'wolf_vote' && (
-                  <span>🐺 Choisissez votre victime...</span>
+                  <span>🐺 Choose your victim...</span>
                 )}
                 {gameState.pending_action === 'seer_check' && (
-                  <span>👁️ Choisissez quelqu'un à examiner...</span>
+                  <span>👁️ Choose someone to examine...</span>
                 )}
                 {gameState.pending_action === 'witch_choice' && (
-                  <span>🧙 Utilisez vos potions...</span>
+                  <span>🧙 Use your potions...</span>
                 )}
                 {gameState.pending_action === 'wait_night' && (
-                  <span>🌙 Les loups rôdent...</span>
+                  <span>🌙 The werewolves are prowling...</span>
                 )}
               </div>
             </div>
@@ -425,16 +429,16 @@ function App() {
       {/* Action panel */}
       {showActionPanel && gameState.players.find(p => p.is_human && !p.is_alive) ? (
         <div className="action-panel spectator-panel">
-          <div className="action-title">⚰️ Vous êtes mort</div>
+          <div className="action-title">⚰️ You are dead</div>
           <div className="action-description">
             {gameState.pending_action === 'auto_night'
-              ? 'Les autres joueurs agissent durant la nuit...'
+              ? 'Other players are acting during the night...'
               : gameState.pending_action === 'auto_day'
-              ? 'Les autres joueurs votent...'
-              : 'En attente du prochain événement...'}
+              ? 'Other players are voting...'
+              : 'Waiting for the next event...'}
           </div>
           <div className="spectator-info">
-            {isLoading ? '⏳ Traitement en cours...' : 'Vous observez le jeu en tant que spectateur'}
+            {isLoading ? '⏳ Processing...' : 'You are observing the game as a spectator'}
           </div>
         </div>
       ) : showActionPanel ? (

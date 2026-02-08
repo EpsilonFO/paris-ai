@@ -41,55 +41,55 @@ class AIPersonality:
     speech_style: str  # Comment l'IA doit parler
 
 
-# Personnalités prédéfinies pour les joueurs IA
+# Predefined personalities for AI players
 AI_PERSONALITIES = [
     AIPersonality(
         name="Marie",
-        description="Institutrice à la retraite, observatrice et méthodique",
-        traits=["analytique", "patiente", "méfiante"],
-        speech_style="Parle de manière posée et réfléchie, utilise des métaphores éducatives"
+        description="Retired teacher, observant and methodical",
+        traits=["analytical", "patient", "suspicious"],
+        speech_style="Speaks in a measured and thoughtful manner, uses educational metaphors"
     ),
     AIPersonality(
         name="Pierre",
-        description="Ancien militaire, direct et pragmatique",
-        traits=["impulsif", "courageux", "franc"],
-        speech_style="Parle de manière directe et sans détour, parfois brusque"
+        description="Former soldier, direct and pragmatic",
+        traits=["impulsive", "courageous", "frank"],
+        speech_style="Speaks directly and bluntly, sometimes harsh"
     ),
     AIPersonality(
         name="Sophie",
-        description="Étudiante en psychologie, manipulatrice subtile",
-        traits=["charmante", "intelligente", "rusée"],
-        speech_style="Parle de manière douce et persuasive, pose beaucoup de questions"
+        description="Psychology student, subtle manipulator",
+        traits=["charming", "intelligent", "cunning"],
+        speech_style="Speaks softly and persuasively, asks many questions"
     ),
     AIPersonality(
         name="Jean",
-        description="Boulanger du village, jovial mais naïf",
-        traits=["sympathique", "confiant", "honnête"],
-        speech_style="Parle simplement avec des expressions populaires, fait des blagues"
+        description="Village baker, jovial but naive",
+        traits=["friendly", "confident", "honest"],
+        speech_style="Speaks simply with popular expressions, makes jokes"
     ),
     AIPersonality(
         name="Élise",
-        description="Médecin légiste, froide et logique",
-        traits=["rationnelle", "détachée", "précise"],
-        speech_style="Parle de manière clinique et factuelle, analyse les comportements"
+        description="Forensic doctor, cold and logical",
+        traits=["rational", "detached", "precise"],
+        speech_style="Speaks in a clinical and factual manner, analyzes behaviors"
     ),
     AIPersonality(
         name="Lucas",
-        description="Adolescent rebelle, imprévisible",
-        traits=["provocateur", "instinctif", "changeant"],
-        speech_style="Parle de manière décontractée avec du slang, provoque les autres"
+        description="Rebellious teenager, unpredictable",
+        traits=["provocative", "instinctive", "changeable"],
+        speech_style="Speaks casually with slang, provokes others"
     ),
     AIPersonality(
         name="Margot",
-        description="Libraire mystérieuse, silencieuse mais perspicace",
-        traits=["discrète", "observatrice", "énigmatique"],
-        speech_style="Parle peu mais chaque mot compte, fait des remarques cryptiques"
+        description="Mysterious librarian, silent but insightful",
+        traits=["discrete", "observant", "enigmatic"],
+        speech_style="Speaks little but each word counts, makes cryptic remarks"
     ),
     AIPersonality(
         name="Henri",
-        description="Maire du village, politique et calculateur",
-        traits=["diplomate", "influent", "opportuniste"],
-        speech_style="Parle de manière politique, essaie de rallier les gens à sa cause"
+        description="Village mayor, political and calculating",
+        traits=["diplomat", "influential", "opportunist"],
+        speech_style="Speaks in a political manner, tries to rally people to his cause"
     ),
 ]
 
@@ -117,78 +117,78 @@ class AIAgent:
         self.model = "claude-haiku-4-5-20251001"
 
     def _build_system_prompt(self) -> str:
-        """Construit le prompt système pour l'agent"""
+        """Build the system prompt for the agent"""
         role_info = self._get_role_info()
 
-        return f"""Tu es {self.personality.name}, un joueur dans une partie de Loup-Garou.
+        return f"""You are {self.personality.name}, a player in a Werewolf game.
 
-PERSONNALITÉ:
+PERSONALITY:
 - Description: {self.personality.description}
 - Traits: {', '.join(self.personality.traits)}
-- Style de parole: {self.personality.speech_style}
+- Speech style: {self.personality.speech_style}
 
-TON RÔLE SECRET: {self.player.role.display_name}
+YOUR SECRET ROLE: {self.player.role.display_name}
 {role_info}
 
-RÈGLES IMPORTANTES:
-1. Tu dois TOUJOURS rester dans ton personnage
-2. Tes réponses doivent être COURTES (1-2 phrases max pour les discussions)
-3. Tu ne dois JAMAIS révéler ton rôle directement (sauf si tu es Voyante et que tu veux aider le village)
-4. Si tu es Loup-Garou, tu dois mentir et détourner les soupçons
-5. Analyse les comportements des autres pour tes décisions
+IMPORTANT RULES:
+1. You must ALWAYS stay in character
+2. Your responses must be SHORT (1-2 sentences max for discussions)
+3. You must NEVER reveal your role directly (except if you're the Seer and want to help the village)
+4. If you're a Werewolf, you must lie and divert suspicion
+5. Analyze others' behaviors to make decisions
 
-IMPORTANT: Réponds toujours en français."""
+IMPORTANT: Always respond in English."""
 
     def _get_role_info(self) -> str:
-        """Retourne les informations spécifiques au rôle"""
+        """Return role-specific information"""
         if self.player.role == Role.LOUP_GAROU:
             wolves = [p.name for p in self.game_state.get_wolves() if p.name != self.player.name]
-            wolves_str = ", ".join(wolves) if wolves else "aucun"
-            return f"""Tu es un LOUP-GAROU.
-Tes alliés loups: {wolves_str}
-Objectif: Éliminer tous les villageois sans te faire démasquer.
-La nuit, tu votes pour dévorer un villageois.
-Le jour, tu dois paraître innocent et accuser les autres."""
+            wolves_str = ", ".join(wolves) if wolves else "none"
+            return f"""You are a WEREWOLF.
+Your werewolf allies: {wolves_str}
+Objective: Eliminate all villagers without being exposed.
+At night, you vote to devour a villager.
+During the day, you must appear innocent and accuse others."""
 
         elif self.player.role == Role.VOYANTE:
-            return """Tu es la VOYANTE.
-Objectif: Aider le village à identifier les loups.
-Chaque nuit, tu peux découvrir le rôle d'un joueur.
-Utilise cette information avec prudence - révéler ton rôle te met en danger."""
+            return """You are the SEER.
+Objective: Help the village identify the werewolves.
+Each night, you can discover a player's true role.
+Use this information carefully - revealing your role puts you in danger."""
 
         elif self.player.role == Role.SORCIERE:
-            return """Tu es la SORCIÈRE.
-Objectif: Aider le village avec tes potions.
-Tu as une potion de vie (sauver la victime des loups) et une potion de mort (tuer quelqu'un).
-Chaque potion ne peut être utilisée qu'une fois."""
+            return """You are the WITCH.
+Objective: Help the village with your potions.
+You have a life potion (save the werewolves' victim) and a death potion (kill someone).
+Each potion can only be used once."""
 
         else:
-            return """Tu es un VILLAGEOIS.
-Objectif: Identifier et éliminer les loups-garous.
-Tu n'as pas de pouvoir spécial mais ton vote compte.
-Observe les comportements suspects."""
+            return """You are a VILLAGER.
+Objective: Identify and eliminate the werewolves.
+You have no special power but your vote counts.
+Observe suspicious behaviors."""
 
     def _build_game_context(self) -> str:
-        """Construit le contexte actuel du jeu"""
+        """Build current game context"""
         game = self.game_state
 
         alive_players = [p.name for p in game.get_alive_players()]
         dead_players = [(p.name, p.role.display_name) for p in game.players if not p.is_alive]
 
-        context = f"""ÉTAT DU JEU:
-- Phase: {game.phase.value} (Jour {game.day_number})
-- Joueurs vivants: {', '.join(alive_players)}
-- Joueurs morts: {', '.join([f"{n} ({r})" for n, r in dead_players]) if dead_players else 'aucun'}
+        context = f"""GAME STATE:
+- Phase: {game.phase.value} (Day {game.day_number})
+- Alive players: {', '.join(alive_players)}
+- Dead players: {', '.join([f"{n} ({r})" for n, r in dead_players]) if dead_players else 'none'}
 """
 
-        # Ajouter les informations de mémoire
+        # Add memory information
         if self.memory.known_roles:
             known = [f"{n}: {r}" for n, r in self.memory.known_roles.items()]
-            context += f"- Rôles que tu connais: {', '.join(known)}\n"
+            context += f"- Roles you know: {', '.join(known)}\n"
 
         if self.memory.conversations:
-            recent = self.memory.conversations[-5:]  # 5 derniers messages
-            context += "- Discussions récentes:\n"
+            recent = self.memory.conversations[-5:]  # Last 5 messages
+            context += "- Recent discussions:\n"
             for conv in recent:
                 context += f"  * {conv['player']}: {conv['message']}\n"
 
@@ -205,20 +205,19 @@ Observe les comportements suspects."""
         game_context = self._build_game_context()
         user_prompt = f"""{game_context}
 
-C'est la phase de discussion du jour. Tu dois participer à la discussion pour:
-1. Exprimer tes suspicions (vraies ou fausses selon ton rôle)
-2. Te défendre si nécessaire
-3. Orienter le vote
+It's the day discussion phase. You must participate in the discussion to:
+1. Express your suspicions (true or false based on your role)
+2. Defend yourself if necessary
+3. Influence the vote
 
-Génère UNE réplique courte (2-3 phrases) en restant dans ton personnage.
-Ne saute pas forcemment sur la première personne qui parle un peu fort ou qui ose accuser elle a peut être de bonnes raisons de le faire.
-Si il n'y a eu aucune discussion préalable pas besoind'en inventer tu peux commencer la conversation 
-Si ta réponse s'adresse à une personne en particulier que tu as envie de confronter tu mettre son nom dans la case name du json de sortie.
-Autrement laisse la case "name" vide.
-Ta réponse doit être dans le format Json suivant : 
-  "content":,
-  "name":
-
+Generate ONE short reply (2-3 sentences) while staying in character.
+Don't automatically target the first person who speaks loudly - they may have good reasons.
+If there have been no previous discussions, you don't need to invent ones, you can start the conversation.
+If your response targets a specific person you want to confront, put their name in the "name" field of the output JSON.
+Otherwise leave the "name" field empty.
+Your response must be in the following JSON format:
+  "content": "your message here",
+  "name": "target name or empty"
 
 """
 
@@ -239,12 +238,12 @@ Ta réponse doit être dans le format Json suivant :
 
     
     def _fallback_discussion(self) -> str:
-        """Message de fallback si l'API échoue"""
+        """Fallback message if API fails"""
         fallbacks = [
-            "Je réfléchis encore...",
-            "Hmm, c'est suspect tout ça.",
-            "On devrait observer plus attentivement.",
-            "Je ne suis pas sûr de qui voter.",
+            "I'm still thinking about this...",
+            "Hmm, something seems suspicious here.",
+            "We should observe more carefully.",
+            "I'm not sure who to vote for.",
         ]
         return random.choice(fallbacks)
 
@@ -257,17 +256,17 @@ Ta réponse doit être dans le format Json suivant :
 
         user_prompt = f"""{game_context}
 
-Discussions du jour:
+Today's discussions:
 {chr(10).join([f"- {d['player']}: {d['message']}" for d in discussions])}
 
-C'est le moment de voter. Tu dois choisir UN joueur à éliminer parmi: {', '.join(candidates)}
+It's time to vote. You must choose ONE player to eliminate from: {', '.join(candidates)}
 
 IMPORTANT:
-- Si tu es Loup-Garou, vote pour ton propre interet
-- Si tu es Villageois/Voyante/Sorcière, vote contre celui que tu suspectes le plus
+- If you're a Werewolf, vote in your own interest
+- If you're a Villager/Seer/Witch, vote against the one you suspect most
 
-Réponds UNIQUEMENT avec un JSON de cette forme:
-{{"vote": "NomDuJoueur", "reasoning": "Explication courte"}}"""
+Respond ONLY with a JSON in this form:
+{{"vote": "PlayerName", "reasoning": "Brief explanation"}}"""
 
         try:
             client = get_anthropic_client()
@@ -315,17 +314,17 @@ Réponds UNIQUEMENT avec un JSON de cette forme:
 
         user_prompt = f"""{game_context}
 
-C'est la nuit. Toi et tes alliés loups ({', '.join(fellow_wolves)}) devez choisir une victime.
+It's night time. You and your werewolf allies ({', '.join(fellow_wolves)}) must choose a victim.
 
-Cibles possibles: {', '.join(targets)}
+Possible targets: {', '.join(targets)}
 
-Stratégie recommandée:
-- Éliminer la Voyante ou la Sorcière en priorité si tu les suspectes
-- Éliminer les joueurs les plus actifs/dangereux pour vous
-- Éviter de créer un pattern trop évident
+Recommended strategy:
+- Eliminate the Seer or Witch first if you suspect them
+- Eliminate the most active/dangerous players for you
+- Avoid creating an obvious pattern
 
-Réponds UNIQUEMENT avec un JSON:
-{{"target": "NomDuJoueur"}}"""
+Respond ONLY with a JSON:
+{{"target": "PlayerName"}}"""
 
         try:
             client = get_anthropic_client()
@@ -373,13 +372,13 @@ Réponds UNIQUEMENT avec un JSON:
 
         user_prompt = f"""{game_context}
 
-Tu es la Voyante. Cette nuit, tu peux découvrir le rôle d'un joueur.
+You are the Seer. Tonight, you can discover a player's true role.
 
-Joueurs que tu peux observer: {', '.join(targets)}
-Joueurs dont tu connais déjà le rôle: {', '.join(self.memory.known_roles.keys()) if self.memory.known_roles else 'aucun'}
+Players you can observe: {', '.join(targets)}
+Players whose roles you already know: {', '.join(self.memory.known_roles.keys()) if self.memory.known_roles else 'none'}
 
-Réponds UNIQUEMENT avec un JSON:
-{{"target": "NomDuJoueur"}}"""
+Respond ONLY with a JSON:
+{{"target": "PlayerName"}}"""
 
         try:
             client = get_anthropic_client()
@@ -414,24 +413,24 @@ Réponds UNIQUEMENT avec un JSON:
                    if p.name != self.player.name]
 
         potions_info = f"""
-Potions disponibles:
-- Potion de vie: {'OUI' if has_life else 'NON (déjà utilisée)'}
-- Potion de mort: {'OUI' if has_death else 'NON (déjà utilisée)'}
+Available potions:
+- Life potion: {'YES' if has_life else 'NO (already used)'}
+- Death potion: {'YES' if has_death else 'NO (already used)'}
 
-{"Les loups ont attaqué: " + wolf_victim if wolf_victim else "Personne n'a été attaqué cette nuit."}
+{"The werewolves attacked: " + wolf_victim if wolf_victim else "No one was attacked tonight."}
 """
 
         user_prompt = f"""{game_context}
 
 {potions_info}
 
-Tu dois décider:
-1. Utiliser la potion de vie pour sauver {wolf_victim}? (si disponible)
-2. Utiliser la potion de mort sur quelqu'un? (cibles: {', '.join(targets)})
-Tu n'es pas obligée de l'utiliser directement, tu peux attendre d'avoir à proteger un personne importante, ou toi même.
-N'utilise ta potion de mort qu'en dernier recours quand tu es persuadée que la personne que tu vas tuer est un loup tu ne veux pas risquer de tuer un villageois.
-Réponds UNIQUEMENT avec un JSON:
-{{"save": true/false, "kill": "NomDuJoueur" ou null, "reasoning": "Explication"}}"""
+You must decide:
+1. Use your life potion to save {wolf_victim}? (if available)
+2. Use your death potion on someone? (targets: {', '.join(targets)})
+You're not forced to use them immediately, you can wait until you need to protect someone important, or yourself.
+Only use your death potion as a last resort when you're sure the person you're killing is a werewolf - don't risk killing a villager.
+Respond ONLY with a JSON:
+{{"save": true/false, "kill": "PlayerName" or null, "reasoning": "Explanation"}}"""
 
         try:
             client = get_anthropic_client()
