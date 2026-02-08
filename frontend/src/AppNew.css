@@ -1,6 +1,6 @@
 /* Wood panel background */
 .app-container {
-  min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(135deg, #3d2817 0%, #2d1f10 100%);
   background-attachment: fixed;
   display: flex;
@@ -74,11 +74,10 @@
 
 /* Village display (left 70%) */
 .village-display {
-  flex: 1;
   width: 70%;
+  flex: 1;
   padding: 24px;
   overflow-y: auto;
-  border-right: 2px solid rgba(200, 160, 100, 0.3);
 }
 
 .village-display::-webkit-scrollbar {
@@ -128,9 +127,21 @@
 /* Players grid */
 .players-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
   margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .players-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .players-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 /* Action hint */
@@ -179,29 +190,13 @@
 }
 
 /* Responsive */
-@media (max-width: 1200px) {
-  .village-display {
-    width: 65%;
-  }
-
-  .app-main {
-    gap: 0;
-  }
-}
-
 @media (max-width: 900px) {
-  .village-display {
-    width: 60%;
-    padding: 16px;
-  }
-
-  .players-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
-  }
-
   .app-title {
     font-size: 24px;
+  }
+
+  .village-display {
+    padding: 16px;
   }
 }
 
@@ -212,21 +207,15 @@
 
   .village-display {
     width: 100%;
-    height: 50%;
-    border-right: none;
+    flex: 1;
     border-bottom: 2px solid rgba(200, 160, 100, 0.3);
   }
 
   .chat-panel {
     width: 100% !important;
-    height: 50% !important;
+    height: 50vh !important;
     border-left: none !important;
     border-top: 2px solid rgba(200, 160, 100, 0.3) !important;
-    position: relative !important;
-  }
-
-  .players-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 }
 
@@ -243,10 +232,6 @@
 
   .village-display {
     padding: 12px;
-  }
-
-  .players-grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 
   .wolf-allies {

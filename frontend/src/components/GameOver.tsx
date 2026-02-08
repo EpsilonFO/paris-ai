@@ -9,17 +9,22 @@ export function GameOver({ winner, onRestart }: GameOverProps) {
   const isVillageWin = winner === 'Village';
 
   return (
-    <div className={`game-over ${isVillageWin ? 'village-win' : 'wolf-win'}`}>
-      <div className="game-over-content">
-        <div className="winner-icon">
-          {isVillageWin ? '🏡' : '🐺'}
+    <div className="game-over wood-panel">
+      <div className="game-over-parchment">
+        <div className={`winner-icon-circle ${isVillageWin ? 'village' : 'wolf'}`}>
+          {isVillageWin ? '🏆' : '💀'}
         </div>
-        <h1>Victoire !</h1>
-        <h2>
+
+        <h1 className="game-over-title">
+          {isVillageWin ? 'Victoire du Village !' : 'Les Loups Triomphent...'}
+        </h1>
+
+        <p className="game-over-description">
           {isVillageWin
-            ? 'Le Village a triomphe des Loups-Garous !'
-            : 'Les Loups-Garous ont devore le Village !'}
-        </h2>
+            ? 'La lumiere a vaincu les tenebres. Le village peut enfin dormir en paix.'
+            : 'Les hurlements resonnent dans la nuit. Le village n\'est plus qu\'un souvenir...'}
+        </p>
+
         <button className="restart-button" onClick={onRestart}>
           Nouvelle Partie
         </button>

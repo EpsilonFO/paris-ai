@@ -9,6 +9,7 @@ interface PlayerCardProps {
   isNight: boolean;
   isSelected?: boolean;
   isSelectable?: boolean;
+  isWolfAlly?: boolean;
 }
 
 export function PlayerCard({
@@ -17,12 +18,13 @@ export function PlayerCard({
   onVote,
   isSelected,
   isSelectable,
+  isWolfAlly,
 }: PlayerCardProps) {
   const canVote = isSelectable && player.is_alive;
 
   return (
     <div
-      className={`player-card ${!player.is_alive ? 'dead' : ''} ${isSelected ? 'selected' : ''} ${canVote && showVote ? 'votable' : ''}`}
+      className={`player-card ${!player.is_alive ? 'dead' : ''} ${isSelected ? 'selected' : ''} ${canVote && showVote ? 'votable' : ''} ${isWolfAlly ? 'wolf-ally' : ''}`}
       onClick={() => canVote && showVote && onVote()}
     >
       <div className="player-card-inner">
@@ -31,6 +33,11 @@ export function PlayerCard({
           {!player.is_alive && (
             <div className="death-indicator">
               <Skull size={20} />
+            </div>
+          )}
+          {isWolfAlly && player.is_alive && (
+            <div className="wolf-ally-badge" title="Allié loup">
+              🐺
             </div>
           )}
         </div>

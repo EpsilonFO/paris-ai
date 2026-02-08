@@ -339,7 +339,7 @@ function App() {
 
       {/* Header */}
       <header className="app-header">
-        <h1 className="app-title">🐺 Loup-Garou 🐺</h1>
+        <h1 className="app-title">Loup-Garou</h1>
         <PhaseIndicator phase={gameState.phase} dayNumber={gameState.day_number} />
       </header>
 
@@ -369,6 +369,7 @@ function App() {
                 isNight={isNight}
                 isSelected={selectedTarget === player.name}
                 isSelectable={isSelectableMode && player.is_alive && !player.is_human}
+                isWolfAlly={fellowWolves.includes(player.name)}
               />
             ))}
           </div>
@@ -440,11 +441,6 @@ function App() {
         />
       ) : null}
 
-      {fellowWolves.length > 0 && (
-        <div className="wolf-allies">
-          Allies loups: {fellowWolves.join(', ')}
-        </div>
-      )}
     </div>
   );
 }

@@ -9,6 +9,11 @@
   justify-content: center;
   z-index: 2000;
   animation: fadeIn 0.5s ease;
+  padding: 32px;
+}
+
+.game-over.wood-panel {
+  background: linear-gradient(135deg, #3d2817 0%, #2d1f10 100%);
 }
 
 @keyframes fadeIn {
@@ -20,17 +25,17 @@
   }
 }
 
-.game-over.village-win {
-  background: linear-gradient(135deg, #1a472a 0%, #2d6a4f 50%, #40916c 100%);
-}
-
-.game-over.wolf-win {
-  background: linear-gradient(135deg, #2c0a0a 0%, #5c1616 50%, #8b0000 100%);
-}
-
-.game-over-content {
+.game-over-parchment {
   text-align: center;
-  padding: 40px;
+  max-width: 480px;
+  width: 100%;
+  padding: 48px;
+  background: linear-gradient(135deg, #f5e6c8 0%, #e8d5a8 50%, #dcc896 100%);
+  border-radius: 8px;
+  border: 3px solid rgba(200, 160, 100, 0.6);
+  box-shadow:
+    0 0 30px rgba(200, 160, 100, 0.3),
+    inset 0 0 20px rgba(200, 160, 100, 0.1);
   animation: scaleIn 0.5s ease 0.2s both;
 }
 
@@ -45,63 +50,81 @@
   }
 }
 
-.winner-icon {
-  font-size: 100px;
-  margin-bottom: 20px;
-  animation: bounce 1s ease infinite;
+.winner-icon-circle {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
 }
 
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
+.winner-icon-circle.village {
+  background: linear-gradient(135deg, #c8a064 0%, #a07830 100%);
+  box-shadow: 0 0 20px rgba(200, 160, 100, 0.5);
 }
 
-.game-over h1 {
-  font-size: 60px;
-  color: #FFD700;
-  margin: 0 0 20px;
-  text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+.winner-icon-circle.wolf {
+  background: linear-gradient(135deg, #8b0000 0%, #5c1616 100%);
+  box-shadow: 0 0 20px rgba(139, 0, 0, 0.5);
 }
 
-.game-over h2 {
-  font-size: 24px;
-  color: white;
-  margin: 0 0 40px;
-  font-weight: normal;
+.game-over-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #4a3520;
+  font-family: 'Georgia', serif;
+  margin: 0 0 16px;
+  letter-spacing: 1px;
+}
+
+.game-over-description {
+  font-size: 16px;
+  color: #6b5a48;
+  font-family: 'Georgia', serif;
+  font-style: italic;
+  line-height: 1.6;
+  margin: 0 0 32px;
 }
 
 .restart-button {
-  padding: 15px 40px;
-  font-size: 18px;
-  font-weight: bold;
-  color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 30px;
+  padding: 14px 36px;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(200, 160, 100, 0.95);
+  background: linear-gradient(135deg, #3d2817 0%, #2d1f10 100%);
+  border: 2px solid rgba(200, 160, 100, 0.5);
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s ease;
+  font-family: 'Georgia', serif;
+  letter-spacing: 1px;
 }
 
 .restart-button:hover {
-  transform: scale(1.05);
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  border-color: rgba(200, 160, 100, 0.8);
 }
 
 @media (max-width: 500px) {
-  .winner-icon {
-    font-size: 60px;
+  .game-over-parchment {
+    padding: 32px 24px;
   }
 
-  .game-over h1 {
-    font-size: 40px;
+  .winner-icon-circle {
+    width: 72px;
+    height: 72px;
+    font-size: 36px;
   }
 
-  .game-over h2 {
-    font-size: 18px;
-    padding: 0 20px;
+  .game-over-title {
+    font-size: 24px;
+  }
+
+  .game-over-description {
+    font-size: 14px;
   }
 }
