@@ -54,6 +54,7 @@ class Player:
     is_alive: bool = True
     is_human: bool = False
     personality: Optional[str] = None
+    voice_id: Optional[str] = None  # ID de la voix TTS Gradium
 
     def to_dict(self, reveal_role: bool = False) -> dict:
         data = {
@@ -61,6 +62,10 @@ class Player:
             "is_alive": self.is_alive,
             "is_human": self.is_human,
         }
+        if self.personality:
+            data["personality"] = self.personality
+        if self.voice_id:
+            data["voice_id"] = self.voice_id
         if reveal_role or not self.is_alive:
             data["role"] = self.role.display_name
         return data

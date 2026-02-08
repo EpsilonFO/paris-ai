@@ -740,6 +740,10 @@ class GameEngine:
         print(f"[DAY_LOG] === FIN traitement {action_type} ===\n")
         return result
 
+    def get_cached_discussions(self, game_id: str) -> list[dict]:
+        """Retourne toutes les discussions du cache (sans générer de nouvelles)"""
+        return self.discussions_cache.get(game_id, [])
+
     async def generate_ai_discussion_async(self, game_id: str) -> list[dict]:
         """Génère les discussions des joueurs IA pendant le jour"""
         game = self.get_game(game_id)
@@ -804,26 +808,26 @@ class GameEngine:
                     print("="*100)
                     if game.get_player(nom_agent_2).is_human :
                         game.pending_action = "human_discussion"
-                        print(f"C'est au tour de {current_player_name} (humain) de parler")
+                        print(f"C'est au tour de {nom_agent_2} de parler")
                         break
+                    else :
+                        target_player = game.get_player(nom_agent_2)
+                        if target_player and target_player.is_alive:
+                            # Si la cible est l'humain, l'humain répondra à son tour
+                            if not target_player.is_human:
+                                agent_2 = agents.get(nom_agent_2)
+                                if agent_2:
+                                    message_2 = await agent_2.generate_discussion(existing_discussions)
+                                    data2 = json.loads(format_json(message_2))
+                                    message_texte_2 = data2.get("content", "")
 
-                    target_player = game.get_player(nom_agent_2)
-                    if target_player and target_player.is_alive:
-                        # Si la cible est l'humain, l'humain répondra à son tour
-                        if not target_player.is_human:
-                            agent_2 = agents.get(nom_agent_2)
-                            if agent_2:
-                                message_2 = await agent_2.generate_discussion(existing_discussions)
-                                data2 = json.loads(format_json(message_2))
-                                message_texte_2 = data2.get("content", "")
-
-                                discussion_2 = {
-                                    "player": nom_agent_2,
-                                    "message": message_texte_2,
-                                }
-                                discussions.append(discussion_2)
-                                existing_discussions.append(discussion_2)
-                                print(f"Réponse de {nom_agent_2} à {current_player_name} : {message_texte_2}")
+                                    discussion_2 = {
+                                        "player": nom_agent_2,
+                                        "message": message_texte_2,
+                                    }
+                                    discussions.append(discussion_2)
+                                    existing_discussions.append(discussion_2)
+                                    print(f"Réponse de {nom_agent_2} à {current_player_name} : {message_texte_2}")
 
             state["current_index"] += 1
 

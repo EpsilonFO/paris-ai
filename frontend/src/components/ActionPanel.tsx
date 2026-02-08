@@ -1,5 +1,4 @@
 import './ActionPanel.css';
-import { useState } from 'react';
 
 interface ActionPanelProps {
   pendingAction: string | null;
@@ -28,9 +27,7 @@ export function ActionPanel({
   onWitchSave,
   onWitchKill,
   isLoading,
-  onSendMessage,
 }: ActionPanelProps) {
-  const [message, setMessage] = useState('');
   const getActionText = () => {
     switch (pendingAction) {
       case 'wolf_vote':
@@ -104,51 +101,6 @@ export function ActionPanel({
         >
           Ne rien faire
         </button>
-      </div>
-    );
-  }
-
-  if (pendingAction === 'human_discussion') {
-    return (
-      <div className="action-panel discussion-panel">
-        <div className="action-title">Discussion du village</div>
-        <div className="action-description">{getActionText()}</div>
-
-        <textarea
-          className="discussion-input"
-          placeholder="Que voulez-vous dire aux autres joueurs ?"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={isLoading}
-          rows={3}
-        />
-
-        <div className="discussion-buttons">
-          <button
-            className="action-button"
-            onClick={() => {
-              if (onSendMessage && message.trim()) {
-                onSendMessage(message.trim());
-                setMessage('');
-              }
-            }}
-            disabled={!message.trim() || isLoading}
-          >
-            {isLoading ? 'Envoi...' : 'Envoyer'}
-          </button>
-
-          <button
-            className="action-button skip"
-            onClick={() => {
-              if (onSendMessage) {
-                onSendMessage('');
-              }
-            }}
-            disabled={isLoading}
-          >
-            Passer mon tour
-          </button>
-        </div>
       </div>
     );
   }

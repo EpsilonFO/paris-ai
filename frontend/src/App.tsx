@@ -1,18 +1,15 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { GameState, Discussion, CreateGameResponse, ActionResult } from './types';
 import { createGame, getGameState, sendAction, getDiscussions, sendMessage } from './api';
 import { StartScreen } from './components/StartScreen';
-import { GameBoard } from './components/GameBoard';
 import { ActionPanel } from './components/ActionPanel';
-import { EventLog } from './components/EventLog';
 import { GameOver } from './components/GameOver';
+import { ChatPanel } from './components/ChatPanel';
+import { PhaseIndicator } from './components/PhaseIndicator';
+import { PlayerCard } from './components/PlayerCard';
+import { getTTSService } from './services/ttsService';
 import './App.css';
-
-interface GameEvent {
-  id: number;
-  type: 'death' | 'saved' | 'vote' | 'info';
-  message: string;
-}
+import './AppNew.css';
 
 function App() {
   const [gameId, setGameId] = useState<string | null>(null);
@@ -21,7 +18,6 @@ function App() {
   const [fellowWolves, setFellowWolves] = useState<string[]>([]);
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<string | null>(null);
-  const [events, setEvents] = useState<GameEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [gameOver, setGameOver] = useState<{ winner: string } | null>(null);
   const [witchInfo, setWitchInfo] = useState<{
@@ -31,10 +27,6 @@ function App() {
   }>({ hasLife: true, hasDeath: true });
   const [skipDayVoteExecuted, setSkipDayVoteExecuted] = useState(false);
 
-  const addEvent = useCallback((type: GameEvent['type'], message: string) => {
-    setEvents((prev) => [...prev, { id: Date.now(), type, message }]);
-  }, []);
-
   const handleStartGame = async (playerName: string, numPlayers: number, numWolves: number) => {
     setIsLoading(true);
     try {
@@ -43,17 +35,10 @@ function App() {
       setYourRole(response.your_role);
       setFellowWolves(response.fellow_wolves || []);
 
-      addEvent('info', response.message);
-
-      if (response.fellow_wolves?.length) {
-        addEvent('info', `Vos allies loups: ${response.fellow_wolves.join(', ')}`);
-      }
-
       const state = await getGameState(response.game_id);
       setGameState(state);
     } catch (error) {
       console.error('Failed to start game:', error);
-      addEvent('info', 'Erreur: impossible de creer la partie');
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +66,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour' && newState.status === 'en_cours') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
         // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour (human_discussion)
         const updatedState = await getGameState(gameId);
         setGameState(updatedState);
@@ -90,7 +75,6 @@ function App() {
       }
     } catch (error) {
       console.error('Action failed:', error);
-      addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action echouee'}`);
     } finally {
       setIsLoading(false);
     }
@@ -108,7 +92,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
       }
     } catch (error) {
       console.error('Witch save failed:', error);
@@ -130,7 +114,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
       }
     } catch (error) {
       console.error('Witch kill failed:', error);
@@ -150,7 +134,7 @@ function App() {
       setGameState(newState);
 
       if (newState.phase === 'jour') {
-        await loadDiscussions();
+        await loadDiscussions(newState);
       }
     } catch (error) {
       console.error('Witch skip failed:', error);
@@ -160,22 +144,45 @@ function App() {
   };
 
   const handleSendMessage = async (message: string) => {
-    if (!gameId) return;
+    if (!gameId || !gameState) return;
     setIsLoading(true);
     try {
-      const result = await sendMessage(gameId, message);
+      // Trouver le nom du joueur humain
+      const humanPlayer = gameState.players.find(p => p.is_human);
+      const playerName = humanPlayer?.name || 'Vous';
 
+      // Afficher immédiatement le message du joueur dans les discussions
       if (message) {
-        addEvent('info', `Vous avez dit: "${message}"`);
-      } else {
-        addEvent('info', 'Vous avez passe votre tour');
+        setDiscussions((prev) => [...prev, { player: playerName, message }]);
       }
 
-      // Afficher les nouvelles discussions des IA
+      const result = await sendMessage(gameId, message);
+
+      // Afficher les nouvelles discussions des IA avec TTS (uniquement en phase JOUR)
       if (result.discussions && result.discussions.length > 0) {
+        const ttsService = getTTSService();
+
         for (const disc of result.discussions) {
-          await new Promise((resolve) => setTimeout(resolve, 800));
+          // Ajouter le message et attendre avant de continuer
           setDiscussions((prev) => [...prev, disc]);
+
+          // Jouer le TTS uniquement pour les messages des IA pendant la phase JOUR
+          if (gameState.phase === 'jour') {
+            try {
+              // Trouver le voice_id du joueur qui parle
+              const speaker = gameState.players.find(p => p.name === disc.player);
+              const voiceId = speaker?.voice_id || 'YTpq7expH9539ERJ'; // Voix par défaut
+              // Attendre que le TTS se termine avant le message suivant
+              await ttsService.playText(disc.message, voiceId);
+            } catch (error) {
+              console.error('TTS playback failed:', error);
+              // Ajouter un petit délai même en cas d'erreur pour éviter l'affichage trop rapide
+              await new Promise((resolve) => setTimeout(resolve, 800));
+            }
+          } else {
+            // Si pas en phase jour, ajouter un délai de 800ms
+            await new Promise((resolve) => setTimeout(resolve, 800));
+          }
         }
       }
 
@@ -184,55 +191,52 @@ function App() {
       setGameState(newState);
     } catch (error) {
       console.error('Send message failed:', error);
-      addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'envoi echoue'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const processActionResult = (result: ActionResult) => {
-    result.messages.forEach((msg) => addEvent('info', msg));
-
-    if (result.seer_result) {
-      const { target, role, is_wolf } = result.seer_result;
-      addEvent(is_wolf ? 'death' : 'saved', `${target} est ${role}`);
-    }
-
-    if (result.witch_victim) {
-      setWitchInfo((prev) => ({ ...prev, victim: result.witch_victim }));
-    }
-
-    if (result.night_events) {
-      result.night_events.deaths.forEach((death) => {
-        addEvent('death', `${death.name} (${death.role}) a ete tue par ${death.cause}`);
-      });
-      if (result.night_events.saved) {
-        addEvent('saved', `${result.night_events.saved} a ete sauve par la sorciere`);
-      }
-    }
-
-    if (result.eliminated) {
-      addEvent('vote', `${result.eliminated.name} (${result.eliminated.role}) elimine avec ${result.eliminated.votes} votes`);
-    }
-
-    if (result.tie) {
-      addEvent('vote', 'Egalite ! Personne n\'est elimine');
-    }
-
     if (result.game_over) {
       setGameOver({ winner: result.game_over.winner });
     }
   };
 
-  const loadDiscussions = async () => {
+  const loadDiscussions = async (currentGameState?: GameState) => {
     if (!gameId) return;
+
+    // Utiliser l'état fourni en paramètre ou l'état actuel
+    const stateToUse = currentGameState || gameState;
+    if (!stateToUse) return;
+
     try {
-      const disc = await getDiscussions(gameId);
+      // Réinitialiser les discussions AVANT de charger (pour éviter le flicker)
       setDiscussions([]);
 
+      const disc = await getDiscussions(gameId);
+      const ttsService = getTTSService();
+
       for (let i = 0; i < disc.length; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 800));
+        // Ajouter le message et attendre avant de continuer
         setDiscussions((prev) => [...prev, disc[i]]);
+
+        // Jouer le TTS uniquement pour les messages des IA pendant la phase JOUR
+        if (stateToUse.phase === 'jour') {
+          try {
+            // Trouver le voice_id du joueur qui parle
+            const speaker = stateToUse.players.find(p => p.name === disc[i].player);
+            const voiceId = speaker?.voice_id || 'YTpq7expH9539ERJ'; // Voix par défaut
+            // Attendre que le TTS se termine avant le message suivant
+            await ttsService.playText(disc[i].message, voiceId);
+          } catch (error) {
+            console.error('TTS playback failed:', error);
+            // Ajouter un petit délai même en cas d'erreur pour éviter l'affichage trop rapide
+            await new Promise((resolve) => setTimeout(resolve, 800));
+          }
+        } else {
+          // Si pas en phase jour, ajouter un délai de 800ms
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        }
       }
     } catch (error) {
       console.error('Failed to load discussions:', error);
@@ -246,20 +250,20 @@ function App() {
     setFellowWolves([]);
     setDiscussions([]);
     setSelectedTarget(null);
-    setEvents([]);
     setGameOver(null);
     setWitchInfo({ hasLife: true, hasDeath: true });
     setSkipDayVoteExecuted(false);
   };
 
   useEffect(() => {
-    if (gameState?.phase === 'jour' && gameState.status === 'en_cours' && discussions.length === 0) {
-      loadDiscussions().then(() => {
+    if (gameId && gameState?.phase === 'jour' && gameState.status === 'en_cours') {
+      // Réinitialiser les discussions au début de la phase JOUR (au lieu de vérifier si vide)
+      loadDiscussions(gameState).then(() => {
         // Rafraîchir l'état du jeu pour récupérer le pending_action mis à jour
-        getGameState(gameId!).then(setGameState);
+        getGameState(gameId).then(setGameState);
       });
     }
-  }, [gameState?.phase]);
+  }, [gameState?.phase, gameState?.day_number, gameId]);
 
   // Réinitialiser le flag skipDayVoteExecuted quand on change de jour
   useEffect(() => {
@@ -285,7 +289,6 @@ function App() {
         setGameState(newState);
       }).catch((error) => {
         console.error('Auto action failed:', error);
-        addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action échouée'}`);
       }).finally(() => {
         setIsLoading(false);
       });
@@ -313,7 +316,6 @@ function App() {
         setGameState(newState);
       }).catch((error) => {
         console.error('Skip day vote failed:', error);
-        addEvent('info', `Erreur: ${error instanceof Error ? error.message : 'action échouée'}`);
         setSkipDayVoteExecuted(false);
       }).finally(() => {
         setIsLoading(false);
@@ -322,31 +324,105 @@ function App() {
   }, [gameState?.phase, gameState?.pending_action, gameState?.day_number, gameState?.status, isLoading, skipDayVoteExecuted]);
 
   if (gameOver) {
-    return <GameOver winner={gameOver.winner} onRestart={handleRestart} />;
+    return (
+      <div className="app full-screen">
+        <GameOver winner={gameOver.winner} onRestart={handleRestart} />
+      </div>
+    );
   }
 
   if (!gameState) {
-    return <StartScreen onStartGame={handleStartGame} isLoading={isLoading} />;
+    return (
+      <div className="app full-screen">
+        <StartScreen onStartGame={handleStartGame} isLoading={isLoading} />
+      </div>
+    );
   }
 
   const showActionPanel = gameState.pending_action && gameState.status === 'en_cours';
   const isSelectableMode = ['wolf_vote', 'seer_check', 'day_vote'].includes(gameState.pending_action || '');
-  const isWitchSelectMode = gameState.pending_action === 'witch_choice' && witchInfo.hasDeath;
+  const isNight = gameState.phase === 'nuit';
+  const showVoteButtons = ['wolf_vote', 'seer_check', 'day_vote'].includes(gameState.pending_action || '');
 
   return (
-    <div className="app">
-      <GameBoard
-        players={gameState.players}
-        discussions={discussions}
-        phase={gameState.phase}
-        dayNumber={gameState.day_number}
-        selectedPlayer={selectedTarget}
-        selectableMode={isSelectableMode || isWitchSelectMode}
-        onPlayerSelect={setSelectedTarget}
-      />
+    <div className="app-container">
+      {/* Night overlay */}
+      {isNight && <div className="night-overlay-game" />}
 
-      <EventLog events={events} />
+      {/* Header */}
+      <header className="app-header">
+        <h1 className="app-title">Loup-Garou</h1>
+        <PhaseIndicator phase={gameState.phase} dayNumber={gameState.day_number} />
+      </header>
 
+      {/* Main game area */}
+      <div className="app-main">
+        {/* Left panel - Village display */}
+        <main className="village-display">
+          <div className="village-section">
+            <h2 className="village-title">
+              <span>⚜</span> Le Village <span>⚜</span>
+            </h2>
+            <p className="village-count">
+              {gameState.players.filter(p => p.is_alive).length} villageois en vie
+            </p>
+          </div>
+
+          {/* Players grid */}
+          <div className="players-grid">
+            {gameState.players.map((player) => (
+              <PlayerCard
+                key={player.name}
+                player={player}
+                showVote={showVoteButtons}
+                onVote={() => {
+                  setSelectedTarget(player.name);
+                }}
+                isNight={isNight}
+                isSelected={selectedTarget === player.name}
+                isSelectable={isSelectableMode && player.is_alive && !player.is_human}
+                isWolfAlly={fellowWolves.includes(player.name)}
+              />
+            ))}
+          </div>
+
+          {/* Action hint */}
+          {gameState.pending_action && (
+            <div className="action-hint">
+              <div className="action-hint-content">
+                {gameState.pending_action === 'day_vote' && (
+                  <span>🗳️ Choisissez qui éliminer...</span>
+                )}
+                {gameState.pending_action === 'human_discussion' && (
+                  <span>💬 C'est à vous de parler dans la Chronique</span>
+                )}
+                {gameState.pending_action === 'wolf_vote' && (
+                  <span>🐺 Choisissez votre victime...</span>
+                )}
+                {gameState.pending_action === 'seer_check' && (
+                  <span>👁️ Choisissez quelqu'un à examiner...</span>
+                )}
+                {gameState.pending_action === 'witch_choice' && (
+                  <span>🧙 Utilisez vos potions...</span>
+                )}
+                {gameState.pending_action === 'wait_night' && (
+                  <span>🌙 Les loups rôdent...</span>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* Right panel - Chat */}
+        <ChatPanel
+          discussions={discussions}
+          pendingAction={gameState.pending_action}
+          humanPlayerName={gameState.players.find(p => p.is_human)?.name || 'Joueur'}
+          onSendMessage={handleSendMessage}
+        />
+      </div>
+
+      {/* Action panel */}
       {showActionPanel && gameState.players.find(p => p.is_human && !p.is_alive) ? (
         <div className="action-panel spectator-panel">
           <div className="action-title">⚰️ Vous êtes mort</div>
@@ -374,15 +450,9 @@ function App() {
           onWitchSave={handleWitchSave}
           onWitchKill={handleWitchKill}
           isLoading={isLoading}
-          onSendMessage={handleSendMessage}
         />
       ) : null}
 
-      {fellowWolves.length > 0 && (
-        <div className="wolf-allies">
-          Allies loups: {fellowWolves.join(', ')}
-        </div>
-      )}
     </div>
   );
 }

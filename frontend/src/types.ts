@@ -4,6 +4,7 @@ export interface Player {
   is_human: boolean;
   role?: string;
   personality?: string;
+  voice_id?: string;
 }
 
 export interface GameState {
