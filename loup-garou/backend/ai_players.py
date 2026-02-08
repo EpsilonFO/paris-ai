@@ -345,9 +345,12 @@ Réponds UNIQUEMENT avec un JSON:
                 print("Erreur 336")
                 pass
 
-            for target in targets:
-                if target.lower() in content.lower():
-                    return {"target": target, "reasoning": "Cible stratégique"}
+            # Chercher le nom du joueur dans la réponse
+            found_targets = [target for target in targets if target.lower() in content.lower()]
+            if found_targets:
+                # Si plusieurs cibles trouvées, choisir aléatoirement pour éviter un pattern
+                chosen_target = random.choice(found_targets)
+                return {"target": chosen_target, "reasoning": "Cible stratégique"}
 
             return {"target": random.choice(targets), "reasoning": "Choix aléatoire"}
 

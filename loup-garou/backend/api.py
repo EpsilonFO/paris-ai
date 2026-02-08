@@ -48,6 +48,10 @@ class PlayerActionRequest(BaseModel):
     kill: Optional[str] = Field(default=None, description="Tuer un joueur (Sorcière)")
 
 
+class SendMessageRequest(BaseModel):
+    message: str = Field(..., description="Message du joueur humain pendant les discussions")
+
+
 # --- Endpoints ---
 
 @app.get("/")
@@ -147,6 +151,22 @@ async def get_discussions(game_id: str):
     # Utiliser la version async
     discussions = await engine.generate_ai_discussion_async(game_id)
     return {"discussions": discussions}
+
+
+@app.post("/api/v1/games/{game_id}/message")
+async def send_message(game_id: str, request: SendMessageRequest):
+    """Envoie un message du joueur humain pendant les discussions"""
+    game = engine.get_game(game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Partie non trouvée")
+
+    # Utiliser la version async
+    result = await engine.send_human_message_async(game_id, request.message)
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return result
 
 
 @app.get("/api/v1/games/{game_id}/summary")

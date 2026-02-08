@@ -23,6 +23,7 @@ class GameEngine:
         self.ai_agents: dict[str, dict[str, AIAgent]] = {}  # game_id -> {player_name -> agent}
         self.personalities: dict[str, dict[str, AIPersonality]] = {}
         self.discussions_cache: dict[str, list[dict]] = {}  # game_id -> discussions
+        self.discussion_state: dict[str, dict] = {}  # game_id -> {order: list, current_index: int, completed: bool}
 
     def create_game(
         self,
@@ -141,7 +142,9 @@ class GameEngine:
             return {"error": "La partie est terminée"}
 
         human = next((p for p in game.players if p.is_human), None)
-        if not human or not human.is_alive:
+
+        # Permettre l'action "skip_day_vote" même si le joueur est mort
+        if not human or (not human.is_alive and action.get("action") != "skip_day_vote"):
             return {"error": "Vous êtes mort"}
 
         if game.phase == Phase.NUIT:
@@ -230,7 +233,9 @@ class GameEngine:
         else:
             # Passer au jour
             game.phase = Phase.JOUR
-            game.pending_action = "day_vote" if human.is_alive else None
+            # Toujours mettre pending_action à day_vote (mort ou vivant)
+            # Le frontend déterminera si le joueur peut voter ou doit passer son tour
+            game.pending_action = "day_vote"
             # Réinitialiser le cache des discussions
             self.discussions_cache[game.game_id] = []
 
@@ -363,7 +368,10 @@ class GameEngine:
         action_type = action.get("action")
         result = {"success": True, "messages": []}
 
-        if action_type == "day_vote":
+        if action_type == "skip_day_vote":
+            # Le joueur humain est mort, les IA votent seules
+            votes = {}
+        elif action_type == "day_vote":
             target_name = action.get("target")
 
             # Collecter les votes
@@ -457,45 +465,87 @@ class GameEngine:
         if not game or game.phase != Phase.JOUR:
             return []
 
-        discussions = []
         agents = self.ai_agents.get(game_id, {})
         existing_discussions = self.discussions_cache.get(game_id, [])
 
-        for player in game.get_alive_players():
-            if not player.is_human:
-                agent = agents.get(player.name)
-                if agent:
-                    message = await agent.generate_discussion(existing_discussions)
-                    data = json.loads(format_json(message))
-                    # 3. Extraction des valeurs dans des variables
-                    nom_agent_2 = data["name"]
-                    message_texte = data["content"]
-                    discussion = {
-                        "player": player.name,
-                        "message": message_texte,
-                    }
-                    discussions.append(discussion)
-                    existing_discussions.append(discussion)
-                    print(player.name, " : ", message_texte)
-                    if(nom_agent_2) :
-                        print("je veux viser ",nom_agent_2)
-                        print("="*100)
-                        print(message)
-                        print("="*100)
-                    if(nom_agent_2 in game.get_alive_players()) : 
-                        agent_2 = agents.get(nom_agent_2)
-                        message_2 = await agent_2.generate_discussion(existing_discussions)
-                        data = json.loads(format_json(message_2))
-                        # 3. Extraction des valeurs dans des variables
-                        nom_agent_2 = data["name"].lower()
-                        message_texte = data["content"]
-                        discussion = {
-                            "player": nom_agent_2,
-                            "message": message_texte,
-                        }
-                        discussions.append(discussion)
-                        existing_discussions.append(discussion)
-                        print("Réponse de ", nom_agent_2, "à ", player.name, " : ", message_texte)
+        # Initialiser l'ordre de passage si ce n'est pas déjà fait
+        if game_id not in self.discussion_state or self.discussion_state[game_id].get("completed", False):
+            alive_players = game.get_alive_players()
+            random.shuffle(alive_players)  # Ordre aléatoire
+            self.discussion_state[game_id] = {
+                "order": [p.name for p in alive_players],
+                "current_index": 0,
+                "completed": False
+            }
+            print(f"Ordre de discussion : {self.discussion_state[game_id]['order']}")
+
+        state = self.discussion_state[game_id]
+        discussions = []
+
+        # Faire parler les joueurs dans l'ordre jusqu'à rencontrer l'humain ou finir
+        while state["current_index"] < len(state["order"]):
+            current_player_name = state["order"][state["current_index"]]
+            current_player = game.get_player(current_player_name)
+
+            if not current_player or not current_player.is_alive:
+                # Joueur mort entre temps, passer au suivant
+                state["current_index"] += 1
+                continue
+
+            # Si c'est le tour de l'humain, mettre à jour pending_action et attendre
+            if current_player.is_human:
+                game.pending_action = "human_discussion"
+                print(f"C'est au tour de {current_player_name} (humain) de parler")
+                break
+
+            # Faire parler l'IA
+            agent = agents.get(current_player_name)
+            if agent:
+                message = await agent.generate_discussion(existing_discussions)
+                data = json.loads(format_json(message))
+                nom_agent_2 = data.get("name", "")
+                message_texte = data.get("content", "")
+
+                discussion = {
+                    "player": current_player_name,
+                    "message": message_texte,
+                }
+                discussions.append(discussion)
+                existing_discussions.append(discussion)
+                print(f"{current_player_name} : {message_texte}")
+
+                # Si l'IA cible quelqu'un, gérer la réponse
+                if nom_agent_2:
+                    print(f"je veux viser {nom_agent_2}")
+                    print("="*100)
+                    print(message)
+                    print("="*100)
+
+                    target_player = game.get_player(nom_agent_2)
+                    if target_player and target_player.is_alive:
+                        # Si la cible est l'humain, l'humain répondra à son tour
+                        if not target_player.is_human:
+                            agent_2 = agents.get(nom_agent_2)
+                            if agent_2:
+                                message_2 = await agent_2.generate_discussion(existing_discussions)
+                                data2 = json.loads(format_json(message_2))
+                                message_texte_2 = data2.get("content", "")
+
+                                discussion_2 = {
+                                    "player": nom_agent_2,
+                                    "message": message_texte_2,
+                                }
+                                discussions.append(discussion_2)
+                                existing_discussions.append(discussion_2)
+                                print(f"Réponse de {nom_agent_2} à {current_player_name} : {message_texte_2}")
+
+            state["current_index"] += 1
+
+        # Vérifier si tous les joueurs ont parlé
+        if state["current_index"] >= len(state["order"]):
+            state["completed"] = True
+            game.pending_action = "day_vote"  # Passer au vote
+            print("Tous les joueurs ont parlé, passage au vote")
 
         # Mettre en cache
         self.discussions_cache[game_id] = existing_discussions
@@ -511,6 +561,58 @@ class GameEngine:
             asyncio.set_event_loop(loop)
 
         return loop.run_until_complete(self.generate_ai_discussion_async(game_id))
+
+    async def send_human_message_async(self, game_id: str, message: str) -> dict:
+        """Traite le message du joueur humain pendant les discussions"""
+        game = self.get_game(game_id)
+        if not game:
+            return {"error": "Partie non trouvée"}
+
+        if game.phase != Phase.JOUR:
+            return {"error": "Pas en phase de jour"}
+
+        human = next((p for p in game.players if p.is_human), None)
+        if not human or not human.is_alive:
+            return {"error": "Joueur humain non trouvé ou mort"}
+
+        # Vérifier que c'est bien le tour de l'humain
+        if game.pending_action != "human_discussion":
+            return {"error": "Ce n'est pas votre tour de parler"}
+
+        existing_discussions = self.discussions_cache.get(game_id, [])
+
+        # Ajouter le message de l'humain
+        discussion = {
+            "player": human.name,
+            "message": message,
+        }
+        existing_discussions.append(discussion)
+        self.discussions_cache[game_id] = existing_discussions
+        print(f"{human.name} (humain) : {message}")
+
+        # Passer au joueur suivant dans l'ordre
+        state = self.discussion_state.get(game_id)
+        if state:
+            state["current_index"] += 1
+
+        # Continuer les discussions avec les IA restantes
+        new_discussions = await self.generate_ai_discussion_async(game_id)
+
+        return {
+            "success": True,
+            "message": "Message envoyé",
+            "discussions": new_discussions
+        }
+
+    def send_human_message(self, game_id: str, message: str) -> dict:
+        """Wrapper sync pour send_human_message_async"""
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        return loop.run_until_complete(self.send_human_message_async(game_id, message))
 
     def get_game_summary(self, game_id: str, player_name: str) -> dict:
         """Génère un résumé de l'état du jeu pour un joueur"""

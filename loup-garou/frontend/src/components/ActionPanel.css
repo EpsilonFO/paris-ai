@@ -116,6 +116,74 @@
   cursor: not-allowed;
 }
 
+/* Discussion Panel */
+.discussion-panel {
+  min-width: 400px;
+  max-width: 600px;
+}
+
+.discussion-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 15px;
+  transition: border-color 0.3s ease;
+}
+
+.discussion-input:focus {
+  outline: none;
+  border-color: rgba(255, 215, 0, 0.6);
+}
+
+.discussion-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.discussion-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.discussion-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.discussion-buttons .action-button {
+  flex: 1;
+}
+
+/* Spectator Panel */
+.spectator-panel {
+  background: rgba(80, 40, 40, 0.85);
+  border: 2px solid rgba(220, 20, 60, 0.5);
+  min-width: 350px;
+}
+
+.spectator-panel .action-title {
+  color: #DC143C;
+  font-size: 20px;
+}
+
+.spectator-info {
+  margin-top: 15px;
+  padding: 10px 15px;
+  background: rgba(100, 50, 50, 0.4);
+  border-radius: 8px;
+  border-left: 3px solid #DC143C;
+  font-size: 14px;
+  font-style: italic;
+  color: #FFB6C1;
+}
+
 /* Event Log */
 .event-log {
   position: fixed;

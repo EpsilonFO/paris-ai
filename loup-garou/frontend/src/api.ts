@@ -63,3 +63,16 @@ export async function getDiscussions(gameId: string): Promise<Discussion[]> {
   const data = await response.json();
   return data.discussions;
 }
+
+export async function sendMessage(gameId: string, message: string): Promise<{ success: boolean; discussions: Discussion[] }> {
+  const response = await fetch(`${API_BASE}/games/${gameId}/message`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to send message');
+  }
+  return response.json();
+}
