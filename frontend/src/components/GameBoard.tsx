@@ -14,7 +14,6 @@ interface GameBoardProps {
 
 export function GameBoard({
   players,
-  discussions,
   phase,
   dayNumber,
   selectedPlayer,

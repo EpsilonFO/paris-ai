@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import type { GameState, Discussion, CreateGameResponse, ActionResult } from './types';
 import { createGame, getGameState, sendAction, getDiscussions, sendMessage } from './api';
 import { StartScreen } from './components/StartScreen';
-import { GameBoard } from './components/GameBoard';
 import { ActionPanel } from './components/ActionPanel';
 import { GameOver } from './components/GameOver';
-import { DiscussionPanel } from './components/DiscussionPanel';
+import { ChatPanel } from './components/ChatPanel';
+import { PhaseIndicator } from './components/PhaseIndicator';
+import { PlayerCard } from './components/PlayerCard';
 import { getTTSService } from './services/ttsService';
 import './App.css';
+import './AppNew.css';
 
 function App() {
   const [gameId, setGameId] = useState<string | null>(null);
@@ -327,30 +329,87 @@ function App() {
 
   const showActionPanel = gameState.pending_action && gameState.status === 'en_cours';
   const isSelectableMode = ['wolf_vote', 'seer_check', 'day_vote'].includes(gameState.pending_action || '');
-  const isWitchSelectMode = gameState.pending_action === 'witch_choice' && witchInfo.hasDeath;
-  const canDiscuss = gameState.pending_action === 'human_discussion' && gameState.status === 'en_cours';
-  const isHumanAlive = gameState.players.find(p => p.is_human)?.is_alive || false;
+  const isNight = gameState.phase === 'nuit';
+  const showVoteButtons = ['wolf_vote', 'seer_check', 'day_vote'].includes(gameState.pending_action || '');
 
   return (
-    <div className="app">
-      <DiscussionPanel
-        discussions={discussions}
-        phase={gameState.phase}
-        canDiscuss={canDiscuss && isHumanAlive}
-        isLoading={isLoading}
-        onSendMessage={handleSendMessage}
-      />
+    <div className="app-container">
+      {/* Night overlay */}
+      {isNight && <div className="night-overlay-game" />}
 
-      <GameBoard
-        players={gameState.players}
-        discussions={discussions}
-        phase={gameState.phase}
-        dayNumber={gameState.day_number}
-        selectedPlayer={selectedTarget}
-        selectableMode={isSelectableMode || isWitchSelectMode}
-        onPlayerSelect={setSelectedTarget}
-      />
+      {/* Header */}
+      <header className="app-header">
+        <h1 className="app-title">🐺 Loup-Garou 🐺</h1>
+        <PhaseIndicator phase={gameState.phase} dayNumber={gameState.day_number} />
+      </header>
 
+      {/* Main game area */}
+      <div className="app-main">
+        {/* Left panel - Village display */}
+        <main className="village-display">
+          <div className="village-section">
+            <h2 className="village-title">
+              <span>⚜</span> Le Village <span>⚜</span>
+            </h2>
+            <p className="village-count">
+              {gameState.players.filter(p => p.is_alive).length} villageois en vie
+            </p>
+          </div>
+
+          {/* Players grid */}
+          <div className="players-grid">
+            {gameState.players.map((player) => (
+              <PlayerCard
+                key={player.name}
+                player={player}
+                showVote={showVoteButtons}
+                onVote={() => {
+                  setSelectedTarget(player.name);
+                }}
+                isNight={isNight}
+                isSelected={selectedTarget === player.name}
+                isSelectable={isSelectableMode && player.is_alive && !player.is_human}
+              />
+            ))}
+          </div>
+
+          {/* Action hint */}
+          {gameState.pending_action && (
+            <div className="action-hint">
+              <div className="action-hint-content">
+                {gameState.pending_action === 'day_vote' && (
+                  <span>🗳️ Choisissez qui éliminer...</span>
+                )}
+                {gameState.pending_action === 'human_discussion' && (
+                  <span>💬 C'est à vous de parler dans la Chronique</span>
+                )}
+                {gameState.pending_action === 'wolf_vote' && (
+                  <span>🐺 Choisissez votre victime...</span>
+                )}
+                {gameState.pending_action === 'seer_check' && (
+                  <span>👁️ Choisissez quelqu'un à examiner...</span>
+                )}
+                {gameState.pending_action === 'witch_choice' && (
+                  <span>🧙 Utilisez vos potions...</span>
+                )}
+                {gameState.pending_action === 'wait_night' && (
+                  <span>🌙 Les loups rôdent...</span>
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* Right panel - Chat */}
+        <ChatPanel
+          discussions={discussions}
+          pendingAction={gameState.pending_action}
+          humanPlayerName={gameState.players.find(p => p.is_human)?.name || 'Joueur'}
+          onSendMessage={handleSendMessage}
+        />
+      </div>
+
+      {/* Action panel */}
       {showActionPanel && gameState.players.find(p => p.is_human && !p.is_alive) ? (
         <div className="action-panel spectator-panel">
           <div className="action-title">⚰️ Vous êtes mort</div>
