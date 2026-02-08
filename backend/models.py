@@ -61,6 +61,7 @@ class Player:
             "name": self.name,
             "is_alive": self.is_alive,
             "is_human": self.is_human,
+            "personality": self.personality,
         }
         if self.personality:
             data["personality"] = self.personality

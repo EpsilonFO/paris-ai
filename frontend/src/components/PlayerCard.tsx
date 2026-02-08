@@ -1,15 +1,17 @@
-import { Skull } from 'lucide-react';
+import { Skull, Loader2 } from 'lucide-react';
 import type { Player } from '../types';
+import { useFalImage } from '../hooks/useFalImage';
 import './PlayerCard.css';
 
 interface PlayerCardProps {
   player: Player;
-  showVote: boolean;
-  onVote: () => void;
-  isNight: boolean;
+  showVote?: boolean;
+  onVote?: () => void;
+  isNight?: boolean;
   isSelected?: boolean;
   isSelectable?: boolean;
   isWolfAlly?: boolean;
+  dyingType?: 'wolf' | 'vote';
 }
 
 export function PlayerCard({
@@ -19,56 +21,69 @@ export function PlayerCard({
   isSelected,
   isSelectable,
   isWolfAlly,
+  dyingType
 }: PlayerCardProps) {
+  
+  // 👇 C'EST ICI QUE ÇA SE PASSE
+  // On passe 'player.role' au hook.
+  // Quand le joueur meurt, player.role change -> le hook régénère l'image avec le costume !
+  const { imageUrl, loading } = useFalImage(
+    player.personality || "", 
+    player.is_human, 
+    player.role // <--- Ajouté ici
+  );
+
   const canVote = isSelectable && player.is_alive;
 
   return (
     <div
-      className={`player-card ${!player.is_alive ? 'dead' : ''} ${isSelected ? 'selected' : ''} ${canVote && showVote ? 'votable' : ''} ${isWolfAlly ? 'wolf-ally' : ''}`}
-      onClick={() => canVote && showVote && onVote()}
+      className={`player-card ${!player.is_alive ? 'dead' : ''} ${isSelected ? 'selected' : ''} ${canVote && showVote ? 'votable' : ''}`}
+      onClick={() => canVote && showVote && onVote && onVote()}
     >
       <div className="player-card-inner">
-        {/* Status indicator */}
-        <div className="player-status">
-          {!player.is_alive && (
-            <div className="death-indicator">
-              <Skull size={20} />
+        
+        {/* IMAGE */}
+        <div className="card-image-wrapper">
+          {loading ? (
+            <div className="card-loader">
+              <Loader2 className="animate-spin text-amber-500" size={32} />
             </div>
+          ) : (
+            <img 
+              src={imageUrl || "/placeholder-avatar.jpg"} 
+              alt={player.name} 
+              className="card-image"
+            />
           )}
-          {isWolfAlly && player.is_alive && (
-            <div className="wolf-ally-badge" title="Allié loup">
-              🐺
-            </div>
-          )}
+          
+          {/* ... (Le reste de tes animations slash/vote inchangé) ... */}
+          {dyingType === 'wolf' && <div className="wolf-slash animate-slash-1"></div>}
+          {/* ... */}
         </div>
 
-        {/* Role indicator */}
-        {player.role && (
-          <div className="role-badge">
-            {player.role === 'Loup-Garou' && '🐺'}
-            {player.role === 'Voyante' && '👁️'}
-            {player.role === 'Sorcière' && '🧙'}
-            {player.role === 'Chasseur' && '🏹'}
-            {player.role === 'Villageois' && '👨'}
-          </div>
-        )}
-
-        {/* Player info */}
+        {/* INFO */}
         <div className="player-info">
           <div className="player-name">{player.name}</div>
-          {player.role && <div className="player-role">{player.role}</div>}
-          {player.personality && (
-            <div className="player-personality">{player.personality}</div>
+          
+          {/* Si le rôle est révélé, on l'affiche aussi en texte */}
+          {player.role && (
+            <div className="role-badge" style={{color: '#fca5a5'}}>
+              {player.role}
+            </div>
+          )}
+          
+          {canVote && showVote && (
+            <button className="vote-button" onClick={(e) => {
+              e.stopPropagation();
+              onVote && onVote();
+            }}>
+              VOTER
+            </button>
           )}
         </div>
-
-        {/* Vote button */}
-        {canVote && showVote && (
-          <button className="vote-button" onClick={onVote}>
-            Voter
-          </button>
-        )}
       </div>
     </div>
   );
 }
+
+export default PlayerCard;

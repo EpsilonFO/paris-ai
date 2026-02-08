@@ -15,6 +15,28 @@ from .models import (
 from .ai_players import AIAgent, AIPersonality, assign_personalities, AI_PERSONALITIES
 
 
+NOMS_HOMMES = ["Gontran", "Barnabé", "Tancrède", "Eudes", "Godefroy", "Enguerrand", "Fulbert"]
+NOMS_FEMMES = ["Cunégonde", "Ermengarde", "Gisèle", "Hildegarde", "Mahaut", "Brunhilde", "Ursule","Élise"]
+
+# On mélange le physique et les accessoires pour des persos uniques
+DETAILS_PHYSIQUES = [
+    "un nez immense et crochu", "des yeux globuleux injectés de sang", "une dentition manquante et pourrie",
+    "un menton en galoche démesuré", "des oreilles décollées géantes", "une verrue poilue sur le nez",
+    "un cou de taureau", "un visage squelettique", "une coiffure en pétard", "une moustache ridicule"
+]
+
+VETEMENTS = [
+    "une tunique sale pleine de trous", "une robe en velours mitée", "un chapeau de paille défoncé",
+    "une armure de cuir trop grande", "des haillons de mendiant", "un costume de noble taché de vin",
+    "une cape en fourrure mystérieuse", "un tablier de boucher ensanglanté"
+]
+
+ACCESSOIRES = [
+    "tient un poulet mort", "tient une chope de bière renversée", "caresse un chat noir",
+    "tient une fourche menaçante", "compte des pièces d'or", "tient une lanterne brisée",
+    "fume une pipe tordue", "mange un oignon cru"
+]
+
 class GameEngine:
     """Gère la logique du jeu du Loup-Garou"""
 
@@ -58,17 +80,39 @@ class GameEngine:
             role=human_role,
             is_human=True
         ))
+        
+        # IA
+        random.shuffle(NOMS_HOMMES)
+        random.shuffle(NOMS_FEMMES)
 
-        # Créer les joueurs IA
-        for role in roles:
+        for i, role in enumerate(roles):
+            is_female = random.choice([True, False])
+            
+            # 1. On construit un personnage visuel (indépendant du rôle secret)
+            if is_female:
+                nom = NOMS_FEMMES.pop() if NOMS_FEMMES else f"Damedieu {i}"
+                genre = "Une vieille femme" if random.random() > 0.5 else "Une jeune femme"
+            else:
+                nom = NOMS_HOMMES.pop() if NOMS_HOMMES else f"Gueux {i}"
+                genre = "Un vieil homme" if random.random() > 0.5 else "Un homme"
+
+            detail = random.choice(DETAILS_PHYSIQUES)
+            fringue = random.choice(VETEMENTS)
+            item = random.choice(ACCESSOIRES)
+
+            # Description riche pour Fal
+            # Ex: "Un vieil homme avec un nez immense, portant une tunique sale et tient un poulet mort."
+            visuel = f"{genre} avec {detail}, portant {fringue}. Le personnage {item}."
+
             players.append(Player(
-                name=f"IA_{len(players)}",  # Nom temporaire
+                name=nom,
                 role=role,
-                is_human=False
+                is_human=False,
+                personality=visuel # C'est ça qui part au frontend
             ))
 
-        # Assigner les personnalités (renomme les joueurs IA)
         self.personalities[game_id] = assign_personalities(players)
+
 
         # Créer l'état du jeu
         game = GameState(

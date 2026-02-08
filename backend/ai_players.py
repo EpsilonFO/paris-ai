@@ -528,9 +528,16 @@ def assign_personalities(players: list[Player]) -> dict[str, AIPersonality]:
                     # Fallback si on manque de voix (utilise la première voix disponible)
                     personality.voice_id = MALE_VOICES[0] if personality.gender == "male" else FEMALE_VOICES[0]
 
+                fal_metadata = {
+                    "description": personality.description,
+                    "gender": "Woman" if personality.gender == "female" else "Man", # On met en anglais pour Fal
+                    "traits": ", ".join(personality.traits),
+                    "style": personality.speech_style
+                }
+                player.personality = json.dumps(fal_metadata)
+                
                 # Assigner les attributs au joueur
                 player.name = personality.name
-                player.personality = personality.description
                 player.voice_id = personality.voice_id
                 assignments[player.name] = personality
 

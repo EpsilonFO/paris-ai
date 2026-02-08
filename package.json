@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@fal-ai/client": "^1.9.0",
+    "framer-motion": "^12.33.0"
+  }
+}

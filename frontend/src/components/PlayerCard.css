@@ -1,169 +1,131 @@
 .player-card {
-  background: linear-gradient(135deg, #3d2817 0%, #2d1f10 100%);
-  border: 2px solid rgba(200, 160, 100, 0.4);
-  border-radius: 8px;
-  padding: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
   position: relative;
+  width: 100%;
+  aspect-ratio: 3/4; /* Format portrait */
+  background: #2c241b; /* Fond sombre */
+  border: 4px solid #8b4513; /* Bordure bois/cuir */
+  border-radius: 12px;
   overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.5);
 }
 
-.player-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(200, 160, 100, 0) 0%, rgba(200, 160, 100, 0.05) 100%);
-  pointer-events: none;
+.player-card:hover {
+  z-index: 10;
 }
 
-.player-card-inner {
-  position: relative;
-  z-index: 1;
-}
-
-.player-card.dead {
-  opacity: 0.5;
-  background: linear-gradient(135deg, #1a1010 0%, #0f0808 100%);
-  border-color: rgba(139, 0, 0, 0.3);
-}
-
-.player-card.dead .player-info {
-  text-decoration: line-through;
-}
-
+/* Interaction : Votable */
 .player-card.votable {
   cursor: pointer;
-  border-color: rgba(200, 160, 100, 0.8);
-  box-shadow: 0 0 15px rgba(200, 160, 100, 0.3), inset 0 0 15px rgba(200, 160, 100, 0.1);
+  border-color: #f59e0b; /* Doré */
 }
-
 .player-card.votable:hover {
-  background: linear-gradient(135deg, #4d3817 0%, #3d2f10 100%);
-  border-color: rgba(200, 160, 100, 1);
-  transform: translateY(-2px);
+  transform: translateY(-5px);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.6);
 }
 
-.player-card.selected {
-  border-color: rgba(200, 160, 100, 1);
-  background: linear-gradient(135deg, #5d4827 0%, #4d3f20 100%);
-  box-shadow: 0 0 20px rgba(200, 160, 100, 0.5), inset 0 0 20px rgba(200, 160, 100, 0.2);
+/* État : Mort */
+.player-card.dead {
+  filter: grayscale(100%);
+  opacity: 0.8;
+  border-color: #555;
 }
 
-.player-status {
+/* --- ZONE IMAGE --- */
+.card-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 75%; /* L'image prend 75% de la hauteur */
+  background-color: #1a1510;
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-loader {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #1c1917;
+}
+
+/* Overlays */
+.death-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.card-badges {
   position: absolute;
   top: 8px;
   right: 8px;
-}
-
-.death-indicator {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: rgba(139, 0, 0, 0.6);
-  border-radius: 50%;
-  color: #ff6b6b;
+  gap: 4px;
+  z-index: 15;
 }
 
-.role-badge {
-  font-size: 20px;
-  margin-bottom: 8px;
-  display: inline-block;
+.card-badges span {
+  background: rgba(0,0,0,0.7);
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 1.2em;
 }
 
+/* --- ZONE INFOS --- */
 .player-info {
+  height: 25%;
+  padding: 8px;
+  background: linear-gradient(to top, #3e2e20, #2c241b);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  border-top: 2px solid #8b4513;
 }
 
 .player-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(200, 160, 100, 0.9);
-  font-family: 'Georgia', serif;
+  font-weight: bold;
+  color: #eecfa1; /* Couleur parchemin */
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-shadow: 1px 1px 2px black;
 }
 
-.player-role {
-  font-size: 11px;
-  color: rgba(200, 160, 100, 0.7);
-  font-style: italic;
-  font-family: 'Georgia', serif;
-}
-
-.player-personality {
-  font-size: 10px;
-  color: rgba(200, 160, 100, 0.6);
-  font-family: 'Georgia', serif;
+.role-badge {
+  font-size: 0.75rem;
+  color: #aaa;
   margin-top: 2px;
 }
 
-/* Wolf ally indicator */
-.player-card.wolf-ally {
-  border-color: rgba(139, 0, 0, 0.6);
-  box-shadow:
-    0 0 12px rgba(139, 0, 0, 0.25),
-    inset 0 0 12px rgba(139, 0, 0, 0.08);
-}
-
-.player-card.wolf-ally::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, rgba(139, 0, 0, 0.6), transparent);
-  border-radius: 0 0 6px 6px;
-}
-
-.wolf-ally-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  font-size: 14px;
-  background: rgba(139, 0, 0, 0.5);
-  border: 1px solid rgba(139, 0, 0, 0.6);
-  border-radius: 50%;
-  animation: wolfPulse 2s ease-in-out infinite alternate;
-}
-
-@keyframes wolfPulse {
-  from {
-    box-shadow: 0 0 4px rgba(139, 0, 0, 0.3);
-  }
-  to {
-    box-shadow: 0 0 10px rgba(139, 0, 0, 0.6);
-  }
-}
-
 .vote-button {
-  margin-top: 8px;
-  width: 100%;
-  padding: 6px;
-  background: rgba(139, 69, 19, 0.6);
-  border: 1px solid rgba(200, 160, 100, 0.4);
+  margin-top: 4px;
+  background-color: #b91c1c; /* Rouge vote */
+  color: white;
+  border: none;
   border-radius: 4px;
-  color: rgba(200, 160, 100, 0.8);
-  font-size: 12px;
-  font-weight: 600;
+  padding: 4px 12px;
+  font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-weight: bold;
+  text-transform: uppercase;
+  animation: pulse 1s infinite;
 }
 
-.vote-button:hover {
-  background: rgba(139, 69, 19, 0.8);
-  border-color: rgba(200, 160, 100, 0.8);
-  color: rgba(200, 160, 100, 1);
-}
-
-.vote-button:active {
-  transform: scale(0.98);
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
