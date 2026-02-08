@@ -20,9 +20,6 @@ app = FastAPI(
     version="2.0.0"
 )
 
-mcp = FastApiMCP(app)
-mcp.mount()
-
 # CORS pour permettre les appels depuis le frontend
 app.add_middleware(
     CORSMiddleware,
@@ -257,10 +254,24 @@ def _generate_intro_message(role: Role) -> str:
     }
     return messages.get(role, "Bienvenue dans la partie !")
 
-mcp.setup_server()
+
+# Créer le serveur MCP après la déclaration de tous les endpoints
+mcp = FastApiMCP(app)
 
 
-# Pour exécuter avec uvicorn
+async def main():
+    """Point d'entrée du serveur MCP via stdio"""
+    from mcp.server.stdio import stdio_server
+
+    async with stdio_server() as (read_stream, write_stream):
+        await mcp.server.run(
+            read_stream,
+            write_stream,
+            mcp.server.create_initialization_options(),
+        )
+
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import asyncio
+    asyncio.run(main())
+
