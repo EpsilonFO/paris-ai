@@ -23,9 +23,22 @@ export function GameBoard({
 }: GameBoardProps) {
   const isNight = phase === 'nuit';
 
-  const getPlayerMessage = (playerName: string): string | undefined => {
-    const discussion = discussions.find((d) => d.player === playerName);
-    return discussion?.message;
+  // Position players in a circle around a virtual table
+  const getPlayerPosition = (index: number, total: number) => {
+    const angle = (index / total) * 2 * Math.PI - Math.PI / 2; // Start from top
+    const radiusX = 45; // Horizontal radius in percentage
+    const radiusY = 35; // Vertical radius in percentage
+    const centerX = 50;
+    const centerY = 50;
+
+    const x = centerX + radiusX * Math.cos(angle);
+    const y = centerY + radiusY * Math.sin(angle);
+
+    return {
+      left: `${x}%`,
+      top: `${y}%`,
+      transform: 'translate(-50%, -50%)',
+    };
   };
 
   return (
@@ -58,15 +71,15 @@ export function GameBoard({
 
       <div className="village-scene">
         <div className="players-circle">
-          {players.map((player) => (
+          {players.map((player, index) => (
             <PlayerAvatar
               key={player.name}
               player={player}
-              message={getPlayerMessage(player.name)}
               isNight={isNight}
               isSelectable={selectableMode && player.is_alive && !player.is_human}
               isSelected={selectedPlayer === player.name}
               onClick={() => onPlayerSelect(player.name)}
+              style={getPlayerPosition(index, players.length)}
             />
           ))}
         </div>

@@ -6,6 +6,7 @@ import { GameBoard } from './components/GameBoard';
 import { ActionPanel } from './components/ActionPanel';
 import { EventLog } from './components/EventLog';
 import { GameOver } from './components/GameOver';
+import { DiscussionPanel } from './components/DiscussionPanel';
 import './App.css';
 
 interface GameEvent {
@@ -288,19 +289,37 @@ function App() {
   }, [gameState?.phase, gameState?.pending_action, gameState?.day_number, isLoading, skipDayVoteExecuted]);
 
   if (gameOver) {
-    return <GameOver winner={gameOver.winner} onRestart={handleRestart} />;
+    return (
+      <div className="app full-screen">
+        <GameOver winner={gameOver.winner} onRestart={handleRestart} />
+      </div>
+    );
   }
 
   if (!gameState) {
-    return <StartScreen onStartGame={handleStartGame} isLoading={isLoading} />;
+    return (
+      <div className="app full-screen">
+        <StartScreen onStartGame={handleStartGame} isLoading={isLoading} />
+      </div>
+    );
   }
 
   const showActionPanel = gameState.pending_action && gameState.status === 'en_cours';
   const isSelectableMode = ['wolf_vote', 'seer_check', 'day_vote'].includes(gameState.pending_action || '');
   const isWitchSelectMode = gameState.pending_action === 'witch_choice' && witchInfo.hasDeath;
+  const canDiscuss = gameState.pending_action === 'human_discussion' && gameState.status === 'en_cours';
+  const isHumanAlive = gameState.players.find(p => p.is_human)?.is_alive || false;
 
   return (
     <div className="app">
+      <DiscussionPanel
+        discussions={discussions}
+        phase={gameState.phase}
+        canDiscuss={canDiscuss && isHumanAlive}
+        isLoading={isLoading}
+        onSendMessage={handleSendMessage}
+      />
+
       <GameBoard
         players={gameState.players}
         discussions={discussions}
@@ -336,7 +355,6 @@ function App() {
           onWitchSave={handleWitchSave}
           onWitchKill={handleWitchKill}
           isLoading={isLoading}
-          onSendMessage={handleSendMessage}
         />
       ) : null}
 

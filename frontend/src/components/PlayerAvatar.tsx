@@ -1,15 +1,13 @@
-import { useState, useEffect } from 'react';
 import type { Player } from '../types';
-import { SpeechBubble } from './SpeechBubble';
 import './PlayerAvatar.css';
 
 interface PlayerAvatarProps {
   player: Player;
-  message?: string;
   isSelected?: boolean;
   isSelectable?: boolean;
   onClick?: () => void;
   isNight?: boolean;
+  style?: React.CSSProperties;
 }
 
 const AVATAR_COLORS = [
@@ -31,22 +29,12 @@ function getInitials(name: string): string {
 
 export function PlayerAvatar({
   player,
-  message,
   isSelected,
   isSelectable,
   onClick,
   isNight,
+  style,
 }: PlayerAvatarProps) {
-  const [showBubble, setShowBubble] = useState(false);
-
-  useEffect(() => {
-    if (message) {
-      setShowBubble(true);
-      const timer = setTimeout(() => setShowBubble(false), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
   const avatarColor = getAvatarColor(player.name);
   const isDead = !player.is_alive;
 
@@ -54,8 +42,8 @@ export function PlayerAvatar({
     <div
       className={`player-avatar-container ${isDead ? 'dead' : ''} ${isSelectable ? 'selectable' : ''} ${isSelected ? 'selected' : ''}`}
       onClick={isSelectable && !isDead ? onClick : undefined}
+      style={style}
     >
-      <SpeechBubble message={message || ''} isVisible={showBubble && !!message} />
 
       <div
         className={`player-avatar ${isNight ? 'night' : 'day'}`}

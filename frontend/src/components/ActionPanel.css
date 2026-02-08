@@ -187,14 +187,14 @@
 /* Event Log */
 .event-log {
   position: fixed;
-  top: 80px;
+  bottom: 20px;
   right: 20px;
   background: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(10px);
   border-radius: 15px;
   padding: 15px;
   max-width: 300px;
-  max-height: 300px;
+  max-height: 250px;
   overflow-y: auto;
   z-index: 900;
 }
@@ -242,4 +242,29 @@
 .event-item.info {
   background: rgba(100, 100, 200, 0.3);
   border-left: 3px solid #6464C8;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .event-log {
+    max-width: 250px;
+    max-height: 200px;
+    bottom: 15px;
+    right: 15px;
+  }
+}
+
+@media (max-width: 900px) {
+  .event-log {
+    bottom: auto;
+    top: 80px;
+    right: 10px;
+    max-width: 200px;
+    max-height: 150px;
+  }
+
+  .action-panel {
+    max-width: 95%;
+    padding: 15px 20px;
+  }
 }
